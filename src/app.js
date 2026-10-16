@@ -136,11 +136,14 @@ export function createApp({
   });
 
   app.all('/api/*', (req, _res, next) => {
+    const safePath = req.path
+      .replace(/\/api\/landlord\/[^/]+/, '/api/landlord/:token')
+      .replace(/\/l\/[^/]+/, '/l/:token');
     next(
       new AppError(
         404,
         'NOT_FOUND',
-        `Route ${req.method} ${req.path} not found`
+        `Route ${req.method} ${safePath} not found`
       )
     );
   });

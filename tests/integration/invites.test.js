@@ -124,6 +124,104 @@ describe('Invites API and Token Security', () => {
     assert.equal(inviteEvents[0].type, 'invite_created');
     assert.equal(inviteEvents[1].type, 'invite_revoked');
     assert.equal(inviteEvents[2].type, 'invite_created');
+
+    // Calling landlord endpoint with old token returns 410 LINK_REVOKED
+    const oldRes = await request(app)
+      .get(`/api/landlord/${token1}/tenancy`)
+      .expect(410);
+    assert.equal(oldRes.body.error.code, 'LINK_REVOKED');
+
+    // Calling landlord endpoint with new token returns 200
+    const newRes = await request(app)
+      .get(`/api/landlord/${token2}/tenancy`)
+      .expect(200);
+    assert.ok(newRes.body.tenancy);
+  });
+
+  it('malformed token returns 404 without querying database', async () => {
+    let queryCalled = false;
+    const originalQuery = pool.query;
+    pool.query = function (...args) {
+      queryCalled = true;
+      return originalQuery.apply(this, args);
+    };
+
+    try {
+      const res = await request(app)
+        .get('/api/landlord/malformed_token_not_43_chars/tenancy')
+        .expect(404);
+      assert.equal(res.body.error.code, 'INVALID_LINK');
+      assert.equal(
+        queryCalled,
+        false,
+        'pool.query must NOT be called for malformed token format'
+      );
+      assert.equal(
+        JSON.stringify(res.body).includes('malformed_token_not_43_chars'),
+        false
+      );
+    } finally {
+      pool.query = originalQuery;
+    }
+  });
+
+  it('bogus token of valid format returns 404 INVALID_LINK without echoing token', async () => {
+    const bogusToken = 'b'.repeat(43);
+    const res = await request(app)
+      .get(`/api/landlord/${bogusToken}/tenancy`)
+      .expect(404);
+    assert.equal(res.body.error.code, 'INVALID_LINK');
+    assert.equal(JSON.stringify(res.body).includes(bogusToken), false);
+  });
+
+  it('unknown landlord subroute returns 404 without echoing raw token in message', async () => {
+    const sampleToken = 'c'.repeat(43);
+    const res = await request(app)
+      .get(`/api/landlord/${sampleToken}/nonexistent_subroute`)
+      .expect(404);
+    assert.equal(res.body.error.code, 'NOT_FOUND');
+    assert.equal(JSON.stringify(res.body).includes(sampleToken), false);
+  });
+
+  it('expired token returns 410 LINK_EXPIRED', async () => {
+    const { agent } = await createRegisteredAgent('Expired Tester');
+    const tenancy = await createTenancy(agent);
+
+    const inviteRes = await agent
+      .post(`/api/tenancies/${tenancy.id}/invite`)
+      .expect(201);
+    const token = inviteRes.body.url.split('/l/')[1];
+
+    // Set expires_at in the past via SQL
+    await pool.query(
+      `UPDATE invites SET expires_at = now() - interval '1 hour' WHERE tenancy_id = $1`,
+      [tenancy.id]
+    );
+
+    const res = await request(app)
+      .get(`/api/landlord/${token}/tenancy`)
+      .expect(410);
+    assert.equal(res.body.error.code, 'LINK_EXPIRED');
+    assert.equal(JSON.stringify(res.body).includes(token), false);
+  });
+
+  it('revoked token via DELETE returns 410 LINK_REVOKED', async () => {
+    const { agent } = await createRegisteredAgent('Revoked Tester');
+    const tenancy = await createTenancy(agent);
+
+    const inviteRes = await agent
+      .post(`/api/tenancies/${tenancy.id}/invite`)
+      .expect(201);
+    const token = inviteRes.body.url.split('/l/')[1];
+
+    // Revoke invite via API
+    await agent.delete(`/api/tenancies/${tenancy.id}/invite`).expect(204);
+
+    const res = await request(app)
+      .get(`/api/landlord/${token}/tenancy`)
+      .expect(410);
+    assert.equal(res.body.error.code, 'LINK_REVOKED');
+    assert.equal(JSON.stringify(res.body).includes(token), false);
   });
 
   it('DELETE /api/tenancies/:id/invite revokes the active invite (returns 204)', async () => {
