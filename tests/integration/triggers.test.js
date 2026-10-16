@@ -217,10 +217,9 @@ describe('Database Triggers and Invariants', () => {
     }, /LOCKED: parent inspection is not in draft status/);
 
     // Restore inspection to draft
-    await pool.query(
-      `UPDATE inspections SET status = 'draft' WHERE id = $1`,
-      [inspectionId]
-    );
+    await pool.query(`UPDATE inspections SET status = 'draft' WHERE id = $1`, [
+      inspectionId,
+    ]);
   });
 
   it('moving an item to another inspection fails with "LOCKED:"', async () => {

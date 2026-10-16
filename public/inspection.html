@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inspection Editor — Handover</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+          "
+        >
+          <h1>Handover</h1>
+          <p><a id="back-link" href="/tenancies.html">← Back</a></p>
+        </div>
+      </header>
+      <main>
+        <div id="general-error" class="alert error" role="alert"></div>
+        <p id="loading-state">Loading inspection...</p>
+
+        <div id="inspection-content" style="display: none">
+          <section style="margin-bottom: 1.5rem">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+              "
+            >
+              <div>
+                <h2 id="inspection-title" style="margin-bottom: 0.25rem"></h2>
+                <p
+                  id="inspection-property"
+                  style="
+                    color: var(--text-muted);
+                    font-size: 0.95rem;
+                    margin-bottom: 0;
+                  "
+                ></p>
+              </div>
+              <span
+                id="inspection-status"
+                class="badge"
+                style="
+                  padding: 0.25rem 0.65rem;
+                  border-radius: 4px;
+                  font-size: 0.85rem;
+                  font-weight: 600;
+                  background: #e5e7eb;
+                  color: #374151;
+                "
+              ></span>
+            </div>
+          </section>
+
+          <div
+            id="locked-banner"
+            class="alert"
+            style="
+              display: none;
+              background: #fef3c7;
+              border: 1px solid #f59e0b;
+              color: #92400e;
+              margin-bottom: 1.5rem;
+              padding: 0.75rem 1rem;
+              border-radius: 4px;
+            "
+          >
+            This inspection has been submitted and is locked for editing.
+            Records are read-only.
+          </div>
+
+          <section
+            id="quick-add-section"
+            class="card"
+            style="
+              margin-bottom: 2rem;
+              padding: 1.25rem;
+              border: 1px solid var(--border-color);
+              border-radius: 6px;
+              background: #f9fafb;
+            "
+          >
+            <h3 style="font-size: 1.05rem; margin-bottom: 0.5rem">
+              Quick Add Common Items
+            </h3>
+            <p
+              style="
+                font-size: 0.875rem;
+                color: var(--text-muted);
+                margin-bottom: 0.75rem;
+              "
+            >
+              Click a room below to automatically add standard inventory items.
+              Existing items are preserved.
+            </p>
+            <div
+              id="quick-add-buttons"
+              style="display: flex; flex-wrap: wrap; gap: 0.5rem"
+            ></div>
+            <p
+              id="quick-add-status"
+              style="
+                font-size: 0.85rem;
+                color: var(--text-muted);
+                margin-top: 0.5rem;
+                display: none;
+              "
+            ></p>
+          </section>
+
+          <section
+            id="add-item-section"
+            class="card"
+            style="
+              margin-bottom: 2rem;
+              padding: 1.25rem;
+              border: 1px solid var(--border-color);
+              border-radius: 6px;
+            "
+          >
+            <h3 style="font-size: 1.05rem; margin-bottom: 1rem">
+              Add Individual Item
+            </h3>
+            <form id="add-item-form" novalidate>
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+                  gap: 1rem;
+                  margin-bottom: 1rem;
+                "
+              >
+                <div class="form-group" style="margin-bottom: 0">
+                  <label for="room-input">Room Name *</label>
+                  <input
+                    type="text"
+                    id="room-input"
+                    name="room"
+                    placeholder="e.g. Living room, Bedroom 1"
+                    required
+                    maxlength="80"
+                  />
+                  <div id="room-error" class="field-error"></div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0">
+                  <label for="name-input">Item Name *</label>
+                  <input
+                    type="text"
+                    id="name-input"
+                    name="name"
+                    placeholder="e.g. Ceiling Fan, Wooden Wardrobe"
+                    required
+                    maxlength="80"
+                  />
+                  <div id="name-error" class="field-error"></div>
+                </div>
+              </div>
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+                  gap: 1rem;
+                  margin-bottom: 1rem;
+                "
+              >
+                <div class="form-group" style="margin-bottom: 0">
+                  <label for="condition-input">Condition</label>
+                  <select
+                    id="condition-input"
+                    name="condition"
+                    style="
+                      width: 100%;
+                      padding: 0.625rem 0.75rem;
+                      font-size: 1rem;
+                      border: 1px solid var(--border-color);
+                      border-radius: 4px;
+                      min-height: 44px;
+                      background: white;
+                    "
+                  >
+                    <option value="">-- Select condition (optional) --</option>
+                    <option value="good">Good</option>
+                    <option value="minor_wear">Minor wear</option>
+                    <option value="damaged">Damaged</option>
+                    <option value="missing">Missing</option>
+                  </select>
+                  <div id="condition-error" class="field-error"></div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0">
+                  <label for="note-input">Note / Remarks (optional)</label>
+                  <input
+                    type="text"
+                    id="note-input"
+                    name="note"
+                    placeholder="e.g. Minor chip on bottom edge"
+                    maxlength="1000"
+                  />
+                  <div id="note-error" class="field-error"></div>
+                </div>
+              </div>
+              <button type="submit" id="add-item-btn" style="max-width: 180px">
+                + Add Item
+              </button>
+            </form>
+          </section>
+
+          <section>
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: baseline;
+                margin-bottom: 1rem;
+              "
+            >
+              <h3>
+                Inspection Inventory (<span id="total-items-count">0</span>)
+              </h3>
+              <span
+                id="save-status-global"
+                style="font-size: 0.875rem; color: var(--text-muted)"
+              ></span>
+            </div>
+
+            <div
+              id="empty-items-state"
+              class="empty-state"
+              style="
+                display: none;
+                padding: 2rem;
+                text-align: center;
+                border: 1px dashed var(--border-color);
+                border-radius: 6px;
+              "
+            >
+              <p style="color: var(--text-muted); margin-bottom: 0">
+                No items added yet. Use Quick Add or the form above to record
+                items.
+              </p>
+            </div>
+
+            <div id="rooms-container"></div>
+          </section>
+        </div>
+      </main>
+      <footer>
+        <p>
+          Handover records what the parties entered and acknowledged. It is not
+          legal advice.
+        </p>
+      </footer>
+    </div>
+    <script type="module" src="/js/pages/inspection.js"></script>
+  </body>
+</html>

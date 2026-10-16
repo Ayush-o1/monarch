@@ -111,22 +111,52 @@ async function loadTenancy() {
     }
 
     // Inspections
+    const moveInAction = document.getElementById('move-in-action');
     if (tenancy.inspections && tenancy.inspections.moveIn) {
       setText(
         'move-in-status',
         tenancy.inspections.moveIn.status.toUpperCase()
       );
+      if (moveInAction) {
+        moveInAction.textContent = '';
+        const link = document.createElement('a');
+        link.href = `/inspection.html?id=${encodeURIComponent(tenancy.inspections.moveIn.id)}`;
+        link.textContent =
+          tenancy.inspections.moveIn.status === 'draft'
+            ? 'Open editor →'
+            : 'View inspection →';
+        moveInAction.appendChild(link);
+      }
     } else {
-      setText('move-in-status', 'DRAFT');
+      setText('move-in-status', 'NOT STARTED');
     }
 
+    const moveOutAction = document.getElementById('move-out-action');
     if (tenancy.inspections && tenancy.inspections.moveOut) {
       setText(
         'move-out-status',
         tenancy.inspections.moveOut.status.toUpperCase()
       );
+      if (moveOutAction) {
+        moveOutAction.textContent = '';
+        const link = document.createElement('a');
+        link.href = `/inspection.html?id=${encodeURIComponent(tenancy.inspections.moveOut.id)}`;
+        link.textContent =
+          tenancy.inspections.moveOut.status === 'draft'
+            ? 'Open editor →'
+            : 'View inspection →';
+        moveOutAction.appendChild(link);
+      }
     } else {
       setText('move-out-status', 'NOT STARTED');
+      if (moveOutAction) {
+        moveOutAction.textContent = '';
+        const p = document.createElement('p');
+        p.style.fontSize = '0.875rem';
+        p.style.color = 'var(--text-muted)';
+        p.textContent = 'Move-out comparison arrives in Phase 7.';
+        moveOutAction.appendChild(p);
+      }
     }
 
     // Timeline events
