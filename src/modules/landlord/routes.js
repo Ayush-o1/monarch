@@ -13,6 +13,7 @@ import {
   getLandlordMediaStream,
   acknowledgeInspection,
   requestChangesInspection,
+  getLandlordComparison,
 } from './service.js';
 
 const uuidParamSchema = z.string().uuid();
@@ -45,6 +46,7 @@ export function createLandlordRouter({
   // All landlord routes get no-store Cache-Control and rate limiting
   router.use((_req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
     next();
   });
 
@@ -57,6 +59,20 @@ export function createLandlordRouter({
     async (req, res, next) => {
       try {
         const data = await getLandlordTenancy(req.landlord.tenancyId, pool);
+        res.status(200).json(data);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  // GET /api/landlord/:token/comparison
+  router.get(
+    '/api/landlord/:token/comparison',
+    landlordTokenMiddleware,
+    async (req, res, next) => {
+      try {
+        const data = await getLandlordComparison(req.landlord.tenancyId, pool);
         res.status(200).json(data);
       } catch (err) {
         next(err);

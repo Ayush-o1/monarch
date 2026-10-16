@@ -3,6 +3,8 @@ import defaultStorage from '../../lib/storage/local.js';
 import { recordEvent as defaultRecordEvent } from '../../lib/events.js';
 import { AppError } from '../../lib/errors.js';
 import { hashToken } from '../../lib/tokens.js';
+import { compareInspections } from '../../lib/comparison.js';
+import { fetchInspectionItemsWithMedia } from '../tenancies/service.js';
 
 export async function validateAndGetInvite(token, pool = defaultPool) {
   const tokenHash = hashToken(token);
@@ -309,4 +311,80 @@ export async function requestChangesInspection(
   });
 
   return updateRes.rows[0];
+}
+
+export async function getLandlordComparison(tenancyId, pool = defaultPool) {
+  const tRes = await pool.query(
+    `SELECT t.property_label, t.address, t.landlord_name, t.deposit_paise,
+            t.refund_window_days, t.lease_start_date, t.status,
+            u.name AS tenant_name
+     FROM tenancies t
+     JOIN users u ON u.id = t.tenant_id
+     WHERE t.id = $1`,
+    [tenancyId]
+  );
+
+  if (tRes.rowCount === 0) {
+    throw new AppError(404, 'NOT_FOUND', 'Tenancy not found');
+  }
+
+  const t = tRes.rows[0];
+
+  const inspRes = await pool.query(
+    `SELECT id, type, status, submitted_at, acknowledged_at, acknowledged_by_name
+     FROM inspections
+     WHERE tenancy_id = $1`,
+    [tenancyId]
+  );
+
+  const moveIn = inspRes.rows.find((i) => i.type === 'move_in');
+  const moveOut = inspRes.rows.find((i) => i.type === 'move_out');
+
+  if (
+    !moveOut ||
+    (moveOut.status !== 'submitted' && moveOut.status !== 'acknowledged')
+  ) {
+    throw new AppError(
+      409,
+      'INVALID_STATE',
+      'Move-out comparison is only available after move-out inspection is submitted'
+    );
+  }
+
+  const moveInItems = moveIn
+    ? await fetchInspectionItemsWithMedia(pool, moveIn.id)
+    : [];
+  const moveOutItems = await fetchInspectionItemsWithMedia(pool, moveOut.id);
+
+  const comparison = compareInspections(moveInItems, moveOutItems);
+
+  return {
+    tenancy: {
+      propertyLabel: t.property_label,
+      address: t.address,
+      landlordName: t.landlord_name,
+      depositPaise: Number(t.deposit_paise),
+      refundWindowDays: t.refund_window_days,
+      leaseStartDate: t.lease_start_date,
+      status: t.status,
+      tenantName: t.tenant_name,
+    },
+    moveInInspection: moveIn
+      ? {
+          id: moveIn.id,
+          status: moveIn.status,
+          submittedAt: moveIn.submitted_at,
+          acknowledgedAt: moveIn.acknowledged_at,
+          acknowledgedByName: moveIn.acknowledged_by_name,
+        }
+      : null,
+    moveOutInspection: {
+      id: moveOut.id,
+      status: moveOut.status,
+      submittedAt: moveOut.submitted_at,
+      acknowledgedAt: moveOut.acknowledged_at,
+      acknowledgedByName: moveOut.acknowledged_by_name,
+    },
+    comparison,
+  };
 }

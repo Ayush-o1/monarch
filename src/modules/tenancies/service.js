@@ -3,6 +3,7 @@ import { pool as defaultPool } from '../../db/pool.js';
 import { recordEvent as defaultRecordEvent } from '../../lib/events.js';
 import { AppError } from '../../lib/errors.js';
 import { generateToken, hashToken } from '../../lib/tokens.js';
+import { compareInspections } from '../../lib/comparison.js';
 
 export async function createTenancy(
   data,
@@ -489,4 +490,117 @@ export async function startMoveOut(
   } finally {
     client.release();
   }
+}
+
+export async function fetchInspectionItemsWithMedia(pool, inspectionId) {
+  const itemsRes = await pool.query(
+    `SELECT id, room, name, condition, note, position
+     FROM inspection_items
+     WHERE inspection_id = $1
+     ORDER BY position ASC, created_at ASC`,
+    [inspectionId]
+  );
+
+  const items = itemsRes.rows;
+  if (items.length === 0) return [];
+
+  const itemIds = items.map((it) => it.id);
+  const mediaRes = await pool.query(
+    `SELECT id, item_id
+     FROM media
+     WHERE item_id = ANY($1::uuid[])
+     ORDER BY uploaded_at ASC`,
+    [itemIds]
+  );
+
+  const mediaMap = new Map();
+  for (const m of mediaRes.rows) {
+    if (!mediaMap.has(m.item_id)) mediaMap.set(m.item_id, []);
+    mediaMap.get(m.item_id).push({ id: m.id });
+  }
+
+  return items.map((it) => ({
+    id: it.id,
+    room: it.room,
+    name: it.name,
+    condition: it.condition,
+    note: it.note,
+    position: it.position,
+    media: mediaMap.get(it.id) || [],
+  }));
+}
+
+export async function getTenancyComparison(
+  tenancyId,
+  tenantId,
+  pool = defaultPool
+) {
+  const tenancyRes = await pool.query(
+    `SELECT * FROM tenancies WHERE id = $1 AND tenant_id = $2`,
+    [tenancyId, tenantId]
+  );
+
+  if (tenancyRes.rowCount === 0) {
+    throw new AppError(404, 'NOT_FOUND', 'Tenancy not found');
+  }
+
+  const tenancy = tenancyRes.rows[0];
+
+  const inspRes = await pool.query(
+    `SELECT id, type, status, submitted_at, acknowledged_at, acknowledged_by_name
+     FROM inspections
+     WHERE tenancy_id = $1`,
+    [tenancyId]
+  );
+
+  const moveIn = inspRes.rows.find((i) => i.type === 'move_in');
+  const moveOut = inspRes.rows.find((i) => i.type === 'move_out');
+
+  if (
+    !moveOut ||
+    (moveOut.status !== 'submitted' && moveOut.status !== 'acknowledged')
+  ) {
+    throw new AppError(
+      409,
+      'INVALID_STATE',
+      'Move-out comparison is only available after move-out inspection is submitted'
+    );
+  }
+
+  const moveInItems = moveIn
+    ? await fetchInspectionItemsWithMedia(pool, moveIn.id)
+    : [];
+  const moveOutItems = await fetchInspectionItemsWithMedia(pool, moveOut.id);
+
+  const comparison = compareInspections(moveInItems, moveOutItems);
+
+  return {
+    tenancy: {
+      id: tenancy.id,
+      propertyLabel: tenancy.property_label,
+      address: tenancy.address,
+      landlordName: tenancy.landlord_name,
+      depositPaise: Number(tenancy.deposit_paise),
+      refundWindowDays: tenancy.refund_window_days,
+      leaseStartDate: tenancy.lease_start_date,
+      status: tenancy.status,
+    },
+    moveInInspection: moveIn
+      ? {
+          id: moveIn.id,
+          status: moveIn.status,
+          submittedAt: moveIn.submitted_at,
+          acknowledgedAt: moveIn.acknowledged_at,
+          acknowledgedByName: moveIn.acknowledged_by_name,
+        }
+      : null,
+    moveOutInspection: {
+      id: moveOut.id,
+      status: moveOut.status,
+      submittedAt: moveOut.submitted_at,
+      acknowledgedAt: moveOut.acknowledged_at,
+      acknowledgedByName: moveOut.acknowledged_by_name,
+    },
+    comparison,
+  };
 }

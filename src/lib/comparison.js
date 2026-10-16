@@ -118,12 +118,16 @@ export function compareInspections(moveInItems = [], moveOutItems = []) {
 
   return {
     summary: {
+      total: items.length,
+      totalItems: items.length,
       totalMoveIn: moveInItems.length,
       totalMoveOut: moveOutItems.length,
       worse: worseCount,
       same: sameCount,
       better: betterCount,
+      added: newCount,
       newAtMoveOut: newCount,
+      missing: missingCount,
       notInMoveOut: missingCount,
     },
     items,

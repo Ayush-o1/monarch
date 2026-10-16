@@ -129,9 +129,17 @@ export function createApp({
     })
   );
 
+  // Landlord comparison page route
+  app.get('/l/:token/compare', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.sendFile(path.join(__dirname, '../public/compare.html'));
+  });
+
   // Landlord review page route
   app.get('/l/:token', (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Referrer-Policy', 'no-referrer');
     res.sendFile(path.join(__dirname, '../public/landlord.html'));
   });
 

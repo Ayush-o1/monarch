@@ -10,6 +10,7 @@ import {
   createInvite,
   revokeInvite,
   startMoveOut,
+  getTenancyComparison,
 } from './service.js';
 import { AppError } from '../../lib/errors.js';
 
@@ -112,6 +113,19 @@ export function createTenanciesRouter({ pool } = {}) {
         actorName: req.session.user.name,
       });
       res.status(201).json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.get('/:id/comparison', validateTenancyId, async (req, res, next) => {
+    try {
+      const result = await getTenancyComparison(
+        req.params.id,
+        req.session.user.id,
+        pool
+      );
+      res.status(200).json(result);
     } catch (err) {
       next(err);
     }
