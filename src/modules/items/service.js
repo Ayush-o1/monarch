@@ -341,7 +341,7 @@ export async function submitInspection(
        FROM inspections i
        JOIN tenancies t ON t.id = i.tenancy_id
        WHERE i.id = $1 AND t.tenant_id = $2
-       FOR UPDATE OF i`,
+       FOR UPDATE OF i, t`,
       [inspectionId, tenantId]
     );
 
@@ -360,7 +360,7 @@ export async function submitInspection(
       );
     }
 
-    // Rule 2: for type move_in the tenancy status must be active else 409
+    // Rule 2: for move_in tenancy must be active; for move_out tenancy must be move_out
     if (
       inspection.type === 'move_in' &&
       inspection.tenancy_status !== 'active'
@@ -369,6 +369,16 @@ export async function submitInspection(
         409,
         'INVALID_STATE',
         'Tenancy must be active to submit move-in inspection'
+      );
+    }
+    if (
+      inspection.type === 'move_out' &&
+      inspection.tenancy_status !== 'move_out'
+    ) {
+      throw new AppError(
+        409,
+        'INVALID_STATE',
+        'Tenancy must be in move_out status to submit move-out inspection'
       );
     }
 
@@ -430,6 +440,16 @@ export async function submitInspection(
        RETURNING id, tenancy_id, type, status, submitted_at, acknowledged_at, acknowledged_by_name, created_at`,
       [inspectionId]
     );
+
+    // If move_out, transition tenancy to settling
+    if (inspection.type === 'move_out') {
+      await client.query(
+        `UPDATE tenancies
+         SET status = 'settling', updated_at = now()
+         WHERE id = $1`,
+        [inspection.tenancy_id]
+      );
+    }
 
     // Record event inspection_submitted
     await recordEventFn(client, {
