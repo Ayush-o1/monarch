@@ -69,7 +69,7 @@ monarch/
    - Trigger `require_draft_inspection`: reads parent inspection `FOR SHARE`; raises `LOCKED:` if status != 'draft'.
 6. **media**: `id uuid pk default gen_random_uuid()`, `item_id uuid not null references inspection_items(id) on delete cascade`, `storage_key text not null unique`, `sha256 char(64) not null`, `mime text not null check (mime = 'image/jpeg')`, `size_bytes integer not null check (size_bytes > 0)`, `uploaded_at timestamptz not null default now()`. `UNIQUE (item_id, sha256)`. Index on `item_id`. Max 8 photos per item.
    - Trigger `require_draft_media`: reads parent item's inspection `FOR SHARE`; raises `LOCKED:` if status != 'draft'; `item_id` is immutable; allows foreign-key cascade when parent item is deleted in draft status.
-7. **invites**: `id`, `tenancy_id`, `token_hash (sha256 hex, unique)`, `expires_at`, `revoked_at null`, `last_used_at null`, `created_at`. Partial unique index on `(tenancy_id) WHERE revoked_at IS NULL`.
+7. **invites**: `id uuid pk default gen_random_uuid()`, `tenancy_id uuid not null references tenancies(id)`, `token_hash char(64) not null unique`, `expires_at timestamptz not null`, `revoked_at timestamptz null`, `last_used_at timestamptz null`, `created_at timestamptz not null default now()`. Partial unique index on `(tenancy_id) WHERE revoked_at IS NULL`. Index on `tenancy_id`.
 8. **deduction_lines**: `id`, `tenancy_id`, `item_id -> inspection_items` (nullable; must belong to move-out inspection), `description (1..300)`, `amount_paise (CHECK > 0)`, `status CHECK in ('proposed','accepted','disputed','withdrawn') default 'proposed'`, `tenant_note (<=500, null ok)`, `created_by_name`, `created_at`, `responded_at`, `updated_at`. Index on `(tenancy_id)`.
 9. **events (append-only)**: `id bigint identity`, `tenancy_id -> tenancies` (no cascade), `actor_type CHECK in ('tenant','landlord','system')`, `actor_label`, `type`, `payload jsonb default '{}'`, `created_at`.
    - Triggers: UPDATE, DELETE, and TRUNCATE raise an exception. Index on `(tenancy_id, id)`.
@@ -86,6 +86,10 @@ monarch/
 ### Inspection Submission
 
 - Requires status `draft`, >= 1 item, and all items to have a condition assigned.
+- Updates `status = 'submitted'`, `submitted_at = now()`.
+- Records `inspection_submitted` event with payload `{ inspectionId, type, itemCount, photoCount, itemsWithoutPhotos }`.
+- Photos are encouraged but not strictly required (warnings list `itemsWithoutPhotos`).
+- Once submitted, the draft lock trigger prevents any mutations to inspection items and media.
 
 ### Media Upload Pipeline
 
@@ -94,11 +98,26 @@ monarch/
 - **Deduplication & Storage Coordination**: Generates sha256 of processed bytes. The file is written to local storage first under `${tenancyId}/${randomUUID()}.jpg`. Then, inside a database transaction with a row lock (`FOR UPDATE`) on the item, the photo count is verified (< 8) and inserted. If insertion fails (e.g. duplicate photo on `item_id, sha256`), the file is immediately removed.
 - **Cascade File Removal**: When an item is deleted, storage keys of associated media rows are selected before deletion; upon transaction commit, files are removed from disk.
 
-### Landlord Actions (Token Link)
+### Landlord Actions (Hashed Token Link)
 
-- Move-in: acknowledge, or request changes with note (returns to `draft`, allowed only while tenancy is `active`).
-- Move-out: acknowledge only. Disagreements handled via deduction lines.
-- Concurrency handled by conditional update (`WHERE status='submitted'`).
+- **Token Generation & Storage**: 43-character base64url cryptographically random tokens (`crypto.randomBytes(32).toString('base64url')`). The raw token is returned once to the tenant upon creation and is never logged or stored. The database stores only the 64-character SHA-256 hex digest (`token_hash`).
+- **One Active Link Invariant**: Enforced by a partial unique index `(tenancy_id) WHERE revoked_at IS NULL`. Creating a new link automatically revokes any previous link (`invite_revoked` event).
+- **Token Middleware & Expiry**:
+  - Validates token format (`/^[A-Za-z0-9_-]{43}$/`) without querying the database; returns 404 `INVALID_LINK` if invalid.
+  - Revoked links return 410 `LINK_REVOKED`.
+  - Expired links (`expires_at <= now()`) return 410 `LINK_EXPIRED`.
+  - Updates `last_used_at` at most once per minute.
+  - Rate-limited to 60 req/min per IP.
+  - All landlord endpoints emit `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
+- **Review Scope**:
+  - Landlords can only see submitted or acknowledged inspections (`status IN ('submitted', 'acknowledged')`). Draft inspections are completely hidden.
+  - Tenant email, user id, and password hash are strictly excluded from landlord responses.
+  - Landlord can stream media only for submitted/acknowledged inspections belonging to that tenancy.
+- **Move-in Actions**:
+  - **Acknowledge**: Single conditional update setting `status='acknowledged'`, `acknowledged_at=now()`, `acknowledged_by_name=$name WHERE id=$1 AND tenancy_id=$2 AND status='submitted'`. Permanently locks the inspection. Records `inspection_acknowledged` event with actor type `landlord`.
+  - **Request Changes**: Allowed only for `move_in` while tenancy is `active`. Single conditional update setting `status='draft'`, `submitted_at=NULL WHERE id=$1 AND tenancy_id=$2 AND status='submitted'`. Records `changes_requested` event with `{ inspectionId, note }`. Returns inspection to draft, enabling the tenant to see the note, edit items/photos, and resubmit.
+- **Move-out Actions**: Acknowledge only. Disagreements handled via deduction lines.
+- **Concurrency**: Handled by database conditional updates (`WHERE status='submitted'`), ensuring exactly one action succeeds and subsequent or racing actions receive 409 `INVALID_STATE`.
 
 ### Comparison Engine
 
@@ -176,5 +195,5 @@ All errors follow:
 - **Password Hashing**: Cost 12 bcryptjs. Enforces minimum 10 characters and maximum 72 bytes (the bcrypt truncation boundary). Login timing side-channel mitigation performs a dummy bcrypt compare when an email is not found.
 - **Accepted Trade-off**: Registration reveals whether an email already exists (returns 409 `EMAIL_TAKEN`), allowing an attacker to determine if an email is registered. This is an accepted trade-off to provide immediate feedback to the tenant during registration.
 - **Media Privacy & Authenticated Serving**: All EXIF and GPS geolocation metadata are stripped during Sharp image re-encoding. Media files are stored using server-generated keys and never served directly as public static assets; access is strictly mediated through authenticated routes (`GET /api/media/:id`), ensuring complete tenant tenancy isolation and IDOR prevention.
-- **Known Limitations (HEIC Format)**: True HEIC/HEIF files are not accepted by the backend. Modern mobile browsers (such as Safari on iOS) automatically transcode HEIC photos to standard JPEG when selecting files through an `<input type="file" accept="image/*">` element.
+- **Known Trade-off (Landlord Link Access)**: Anyone with the link can act as the landlord. This avoids requiring landlord account registration or app installation. Mitigated by: (1) cryptographically secure 256-bit random tokens (43 base64url characters); (2) storing only the SHA-256 hash in the database; (3) automatic expiration (`INVITE_TTL_DAYS`); (4) instant revocation by the tenant via UI or API; (5) single active link invariant enforced by a partial unique index; (6) rate limiting (60 req/min per IP); (7) strict `no-store` cache control and `no-referrer` policies; and (8) complete omission of tenant email and user IDs from landlord payloads.
 - **Known Limits (Trigger Security)**: The table owner (the app role in development) can disable triggers, so the append-only and lock triggers stop mistakes and application bugs, not a privileged database attacker; Phase 10 will separate migration (DDL) and app runtime (DML) roles.

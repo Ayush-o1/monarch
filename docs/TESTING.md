@@ -88,3 +88,45 @@ _Note: Tests isolate themselves by creating unique users with random emails. Do 
 - [ ] Cascade delete: deleting an item cascades to delete media rows and deletes physical files from disk.
 - [ ] Storage traversal defense: refusal of path traversal attempts outside UPLOAD_DIR.
 - [ ] UI: thumbnail strip, loading="lazy", full-view in new tab, upload busy state, and deletion confirmation.
+
+### Phase 6 Checklist (Submit, Landlord Link, Acknowledge, Lock)
+
+- [ ] Inspection submission validation:
+  - Empty inspection returns 422 NO_ITEMS.
+  - Items missing condition return 422 INCOMPLETE_ITEMS with item details.
+  - Submitting when not in draft returns 409 INSPECTION_NOT_DRAFT.
+  - Move-in submission when tenancy is not active returns 409.
+- [ ] Submission success: sets status to submitted, captures submitted_at timestamp, records inspection_submitted event with photo counts.
+- [ ] Draft lock: editing items, creating items, or uploading/deleting media on submitted inspections returns 409 INSPECTION_LOCKED.
+- [ ] Landlord link creation:
+  - Generates 43-character base64url token; stores only SHA-256 hash in database.
+  - Displayed once in read-only input with Copy button and expiry date.
+  - Creating a new link automatically revokes previous link.
+  - Revoking link sets revoked_at and returns 204.
+- [ ] Landlord review page (`/l/:token`):
+  - Invalid format returns 404 without querying database.
+  - Revoked link returns 410 LINK_REVOKED.
+  - Expired link returns 410 LINK_EXPIRED.
+  - Tenant email, user id, and password_hash are strictly absent from response.
+  - Draft inspections are completely hidden.
+- [ ] Two-window manual walkthrough:
+  - **Window A (Tenant)**:
+    1. Create tenancy, add items with conditions and photos.
+    2. Click "Submit for review", observe confirm prompt detailing items without photos.
+    3. Click "Create Review Link" under "Share with Landlord"; copy link.
+  - **Window B (Landlord in Private Window)**:
+    1. Open the copied URL (`http://localhost:3000/l/<token>`).
+    2. Confirm property details, deposit, items grouped by room with condition icons and photo thumbnails.
+    3. Enter name, click "Request Changes" with note "Please check sink faucet".
+  - **Window A (Tenant)**:
+    1. Reload inspection editor; observe red banner displaying landlord's note and name.
+    2. Edit item and click "Submit for review" again.
+  - **Window B (Landlord)**:
+    1. Reload page; observe inspection updated.
+    2. Enter name, click "Acknowledge Record".
+    3. Confirm card updates to acknowledged state with permanent lock.
+  - **Window A (Tenant)**:
+    1. Reload tenancy; observe move-in inspection status is ACKNOWLEDGED.
+    2. Click "Revoke Link"; observe link status updating to "No active link".
+  - **Window B (Landlord)**:
+    1. Reload page; confirm 410 "This link has expired or was replaced".

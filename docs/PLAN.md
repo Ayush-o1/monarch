@@ -39,7 +39,7 @@
   - Upload pipeline: resize to 1600x1600, strip EXIF, convert to JPEG quality 80, max 8 photos per item
   - Photo attachment UI in inspection editor
 
-- [ ] **Phase 6 — Submit, landlord link, acknowledge and lock**
+- [x] **Phase 6 — Submit, landlord link, acknowledge and lock**
   - Migration `006_invites.sql` and token hashing helper (`lib/tokens.js`)
   - Inspection submit endpoint with validation
   - Landlord link generation (one-time return of URL, revocation of prior links)
