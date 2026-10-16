@@ -346,3 +346,147 @@ export async function getTenancyEvents(id, tenantId, pool = defaultPool) {
     id: String(row.id),
   }));
 }
+
+export async function startMoveOut(
+  tenancyId,
+  tenantId,
+  {
+    pool = defaultPool,
+    recordEventFn = defaultRecordEvent,
+    actorName = 'Tenant',
+  } = {}
+) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // 1. Lock tenancy row FOR UPDATE, verifying ownership
+    const tenancyRes = await client.query(
+      `SELECT * FROM tenancies WHERE id = $1 AND tenant_id = $2 FOR UPDATE`,
+      [tenancyId, tenantId]
+    );
+
+    if (tenancyRes.rowCount === 0) {
+      throw new AppError(404, 'NOT_FOUND', 'Tenancy not found');
+    }
+
+    const tenancy = tenancyRes.rows[0];
+
+    // 2. Require tenancy status 'active'
+    if (tenancy.status !== 'active') {
+      throw new AppError(
+        409,
+        'INVALID_STATE',
+        'Tenancy must be active to start move-out'
+      );
+    }
+
+    // 3. Query move-in and any existing move-out inspections
+    const inspectionsRes = await client.query(
+      `SELECT id, type, status FROM inspections WHERE tenancy_id = $1`,
+      [tenancyId]
+    );
+
+    const moveIn = inspectionsRes.rows.find((i) => i.type === 'move_in');
+    const existingMoveOut = inspectionsRes.rows.find(
+      (i) => i.type === 'move_out'
+    );
+
+    if (
+      !moveIn ||
+      (moveIn.status !== 'submitted' && moveIn.status !== 'acknowledged')
+    ) {
+      throw new AppError(
+        409,
+        'INVALID_STATE',
+        'Move-in inspection must be submitted or acknowledged before starting move-out'
+      );
+    }
+
+    if (existingMoveOut) {
+      throw new AppError(
+        409,
+        'INVALID_STATE',
+        'Move-out inspection already exists'
+      );
+    }
+
+    // 4. Create move_out draft inspection
+    const newInspRes = await client.query(
+      `INSERT INTO inspections (tenancy_id, type, status)
+       VALUES ($1, 'move_out', 'draft')
+       RETURNING *`,
+      [tenancyId]
+    );
+    const moveOutInspection = newInspRes.rows[0];
+
+    // 5. Clone move-in items with blank condition and note (0 photos cloned)
+    const moveInItemsRes = await client.query(
+      `SELECT room, name, position
+       FROM inspection_items
+       WHERE inspection_id = $1
+       ORDER BY position ASC, created_at ASC`,
+      [moveIn.id]
+    );
+
+    let clonedCount = 0;
+    for (const item of moveInItemsRes.rows) {
+      await client.query(
+        `INSERT INTO inspection_items (inspection_id, room, name, condition, note, position)
+         VALUES ($1, $2, $3, NULL, NULL, $4)`,
+        [moveOutInspection.id, item.room, item.name, item.position]
+      );
+      clonedCount++;
+    }
+
+    // 6. Update tenancy status to 'move_out'
+    const updatedTenancyRes = await client.query(
+      `UPDATE tenancies
+       SET status = 'move_out', updated_at = now()
+       WHERE id = $1
+       RETURNING *`,
+      [tenancyId]
+    );
+    const updatedTenancy = updatedTenancyRes.rows[0];
+
+    // 7. Record event move_out_started
+    await recordEventFn(client, {
+      tenancyId,
+      actorType: 'tenant',
+      actorLabel: actorName,
+      type: 'move_out_started',
+      payload: {
+        inspectionId: moveOutInspection.id,
+        itemCount: clonedCount,
+      },
+    });
+
+    await client.query('COMMIT');
+
+    return {
+      tenancy: {
+        ...updatedTenancy,
+        deposit_paise: Number(updatedTenancy.deposit_paise),
+      },
+      inspection: {
+        id: moveOutInspection.id,
+        type: moveOutInspection.type,
+        status: moveOutInspection.status,
+        submittedAt: moveOutInspection.submitted_at,
+        acknowledgedAt: moveOutInspection.acknowledged_at,
+        acknowledgedByName: moveOutInspection.acknowledged_by_name,
+        createdAt: moveOutInspection.created_at,
+        submitted_at: moveOutInspection.submitted_at,
+        acknowledged_at: moveOutInspection.acknowledged_at,
+        acknowledged_by_name: moveOutInspection.acknowledged_by_name,
+        created_at: moveOutInspection.created_at,
+      },
+    };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}

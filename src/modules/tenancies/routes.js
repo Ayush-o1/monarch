@@ -9,6 +9,7 @@ import {
   getTenancyEvents,
   createInvite,
   revokeInvite,
+  startMoveOut,
 } from './service.js';
 import { AppError } from '../../lib/errors.js';
 
@@ -99,6 +100,18 @@ export function createTenanciesRouter({ pool } = {}) {
         actorName: req.session.user.name,
       });
       res.status(204).end();
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/:id/move-out', validateTenancyId, async (req, res, next) => {
+    try {
+      const result = await startMoveOut(req.params.id, req.session.user.id, {
+        pool,
+        actorName: req.session.user.name,
+      });
+      res.status(201).json(result);
     } catch (err) {
       next(err);
     }
