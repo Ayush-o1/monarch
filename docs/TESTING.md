@@ -64,3 +64,13 @@ _Note: Tests isolate themselves by creating unique users with random emails. Do 
   - `curl -i http://localhost:3000/api/nope` returns HTTP 404 with error JSON.
   - Open `http://localhost:3000` in browser: minimal page loads with product name and legal notice.
 - [x] Start server with `SESSION_SECRET=short` to confirm fast failure.
+
+### Phase 4 Checklist (Items & Lock Trigger)
+
+- [ ] Item CRUD in draft status: create, patch, delete, get inspection items.
+- [ ] Unique item constraint: duplicate room and name (case-insensitive) returns 409 DUPLICATE_ITEM.
+- [ ] Item cap: creating beyond 300 items per inspection returns 422 TOO_MANY_ITEMS.
+- [ ] Inspection lock trigger: updating, deleting, or inserting items when inspection status is not draft fails with 409 INSPECTION_LOCKED (`LOCKED:...`).
+- [ ] Item immutability: attempting to change an item's `inspection_id` fails.
+- [ ] Strict inspections guard: any update on an acknowledged inspection fails.
+- [ ] Concurrency: draft lock during status transition blocks concurrent item creation until resolution.

@@ -28,9 +28,9 @@
   - Tenancies dashboard (`tenancies.html`, `tenancy.html`) and rupee/paise converter (`public/js/money.js`)
 
 - [ ] **Phase 4 — Inspection items and editor**
-  - Migration `004_inspection_items.sql` with `require_draft_inspection` trigger
-  - Item CRUD APIs with 300 items max limit and duplicate checking
-  - Inspection editor page (`inspection.html`) with room grouping and quick-add common items
+  - Migration `004_inspection_items.sql` with tightened `inspections_guard` and `require_draft_inspection` trigger (FOR SHARE check)
+  - Item CRUD APIs with 300 items max limit, position tracking, duplicate checking via unique index, and error mapping
+  - Inspection editor page (`inspection.html`) with room grouping, auto-save, quick-add common items, and read-only mode for non-drafts
 
 - [ ] **Phase 5 — Photos**
   - Install `multer`, `sharp`
