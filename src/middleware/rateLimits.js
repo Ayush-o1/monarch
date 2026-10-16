@@ -24,3 +24,27 @@ export function createAuthRateLimiter(options = {}) {
 }
 
 export const authRateLimiter = createAuthRateLimiter();
+
+export function createMediaUploadRateLimiter(options = {}) {
+  const windowMs = options.windowMs || 60 * 1000;
+  const max = options.max !== undefined ? options.max : 30;
+
+  return rateLimit({
+    windowMs,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (_req, _res, next) => {
+      next(
+        new AppError(
+          429,
+          'RATE_LIMIT_EXCEEDED',
+          'Too many uploads, please try again later'
+        )
+      );
+    },
+    ...options,
+  });
+}
+
+export const mediaUploadRateLimiter = createMediaUploadRateLimiter();

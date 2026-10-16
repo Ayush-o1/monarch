@@ -43,6 +43,41 @@ export function errorHandler(err, req, res, _next) {
     });
   }
 
+  // Postgres unique violation on media (item_id, sha256)
+  if (
+    err.code === '23505' &&
+    (err.constraint === 'media_item_id_sha256_key' ||
+      (err.message && err.message.includes('media')))
+  ) {
+    return res.status(409).json({
+      error: {
+        code: 'DUPLICATE_PHOTO',
+        message: 'This photo has already been uploaded for this item',
+        details: {},
+      },
+    });
+  }
+
+  // Multer file upload errors
+  if (err.name === 'MulterError') {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({
+        error: {
+          code: 'FILE_TOO_LARGE',
+          message: 'File size exceeds maximum allowed upload size',
+          details: {},
+        },
+      });
+    }
+    return res.status(400).json({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: err.message || 'File upload validation error',
+        details: {},
+      },
+    });
+  }
+
   const status = typeof err.status === 'number' ? err.status : 500;
   const isProduction = process.env.NODE_ENV === 'production';
   const code =

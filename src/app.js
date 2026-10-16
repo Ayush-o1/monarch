@@ -12,6 +12,7 @@ import { pool as defaultPool } from './db/pool.js';
 import { createAuthRouter } from './modules/auth/routes.js';
 import { createTenanciesRouter } from './modules/tenancies/routes.js';
 import { createItemsRouter } from './modules/items/routes.js';
+import { createMediaRouter } from './modules/media/routes.js';
 
 const PgSession = connectPgSimple(session);
 
@@ -21,6 +22,9 @@ const __dirname = path.dirname(__filename);
 export function createApp({
   pool = defaultPool,
   authLimiter,
+  mediaLimiter,
+  storage,
+  maxUploadMb,
   sessionStore,
   sessionSecret = config.sessionSecret,
 } = {}) {
@@ -102,7 +106,17 @@ export function createApp({
   app.use('/api/tenancies', createTenanciesRouter());
 
   // Inspections and items routes
-  app.use(createItemsRouter());
+  app.use(createItemsRouter({ pool, storage }));
+
+  // Media routes
+  app.use(
+    createMediaRouter({
+      pool,
+      storage,
+      uploadLimiter: mediaLimiter,
+      maxUploadMb,
+    })
+  );
 
   app.all('/api/*', (req, _res, next) => {
     next(

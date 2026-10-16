@@ -1,5 +1,6 @@
 import { pool as defaultPool } from '../../db/pool.js';
 import { AppError } from '../../lib/errors.js';
+import defaultStorage from '../../lib/storage/local.js';
 
 export async function createInspectionItem(
   inspectionId,
@@ -173,9 +174,11 @@ export async function patchInspectionItem(
 export async function deleteInspectionItem(
   itemId,
   tenantId,
-  pool = defaultPool
+  pool = defaultPool,
+  storage = defaultStorage
 ) {
   const client = await pool.connect();
+  let mediaKeys = [];
 
   try {
     await client.query('BEGIN');
@@ -205,15 +208,30 @@ export async function deleteInspectionItem(
       );
     }
 
+    // Select storage keys before deleting item so photos can be cleaned up from disk
+    const mediaRes = await client.query(
+      `SELECT storage_key FROM media WHERE item_id = $1`,
+      [itemId]
+    );
+    mediaKeys = mediaRes.rows.map((r) => r.storage_key);
+
     await client.query(`DELETE FROM inspection_items WHERE id = $1`, [itemId]);
     await client.query('COMMIT');
-    return { success: true };
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
   } finally {
     client.release();
   }
+
+  // Delete the files of its photos from storage after commit
+  for (const key of mediaKeys) {
+    await storage.remove(key).catch((err) => {
+      console.warn('Failed to remove media file on item delete:', err.message);
+    });
+  }
+
+  return { success: true };
 }
 
 export async function getInspectionWithItems(
@@ -244,8 +262,36 @@ export async function getInspectionWithItems(
     [inspectionId]
   );
 
+  const items = itemsRes.rows;
+
+  if (items.length > 0) {
+    const itemIds = items.map((it) => it.id);
+    const mediaRes = await pool.query(
+      `SELECT id, item_id, uploaded_at
+       FROM media
+       WHERE item_id = ANY($1::uuid[])
+       ORDER BY uploaded_at ASC`,
+      [itemIds]
+    );
+
+    const mediaByItem = new Map();
+    for (const m of mediaRes.rows) {
+      if (!mediaByItem.has(m.item_id)) {
+        mediaByItem.set(m.item_id, []);
+      }
+      mediaByItem.get(m.item_id).push({
+        id: m.id,
+        uploadedAt: m.uploaded_at,
+      });
+    }
+
+    for (const it of items) {
+      it.media = mediaByItem.get(it.id) || [];
+    }
+  }
+
   return {
     ...inspection,
-    items: itemsRes.rows,
+    items,
   };
 }

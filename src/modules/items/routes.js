@@ -18,7 +18,7 @@ function validateIdParam(req, _res, next) {
   next();
 }
 
-export function createItemsRouter() {
+export function createItemsRouter({ pool, storage } = {}) {
   const router = express.Router();
 
   // GET /api/inspections/:id
@@ -30,7 +30,8 @@ export function createItemsRouter() {
       try {
         const inspection = await getInspectionWithItems(
           req.params.id,
-          req.session.user.id
+          req.session.user.id,
+          pool
         );
         res.status(200).json(inspection);
       } catch (err) {
@@ -50,7 +51,8 @@ export function createItemsRouter() {
         const item = await createInspectionItem(
           req.params.id,
           req.session.user.id,
-          req.body
+          req.body,
+          pool
         );
         res.status(201).json(item);
       } catch (err) {
@@ -70,7 +72,8 @@ export function createItemsRouter() {
         const updated = await patchInspectionItem(
           req.params.id,
           req.session.user.id,
-          req.body
+          req.body,
+          pool
         );
         res.status(200).json(updated);
       } catch (err) {
@@ -86,7 +89,12 @@ export function createItemsRouter() {
     validateIdParam,
     async (req, res, next) => {
       try {
-        await deleteInspectionItem(req.params.id, req.session.user.id);
+        await deleteInspectionItem(
+          req.params.id,
+          req.session.user.id,
+          pool,
+          storage
+        );
         res.status(200).json({ success: true });
       } catch (err) {
         next(err);
