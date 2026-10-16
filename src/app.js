@@ -13,6 +13,7 @@ import { createAuthRouter } from './modules/auth/routes.js';
 import { createTenanciesRouter } from './modules/tenancies/routes.js';
 import { createItemsRouter } from './modules/items/routes.js';
 import { createMediaRouter } from './modules/media/routes.js';
+import { createLandlordRouter } from './modules/landlord/routes.js';
 
 const PgSession = connectPgSimple(session);
 
@@ -23,6 +24,7 @@ export function createApp({
   pool = defaultPool,
   authLimiter,
   mediaLimiter,
+  landlordLimiter,
   storage,
   maxUploadMb,
   sessionStore,
@@ -117,6 +119,21 @@ export function createApp({
       maxUploadMb,
     })
   );
+
+  // Landlord token API routes
+  app.use(
+    createLandlordRouter({
+      pool,
+      storage,
+      rateLimiter: landlordLimiter,
+    })
+  );
+
+  // Landlord review page route
+  app.get('/l/:token', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.sendFile(path.join(__dirname, '../public/landlord.html'));
+  });
 
   app.all('/api/*', (req, _res, next) => {
     next(

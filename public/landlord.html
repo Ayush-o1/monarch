@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Landlord Review — Handover</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Handover</h1>
+        <p style="color: var(--text-muted); font-size: 0.95rem">
+          Move-in &amp; Move-out Inspection Review
+        </p>
+      </header>
+      <main>
+        <div id="general-error" class="alert error" role="alert"></div>
+        <p id="loading-state">Loading inspection records...</p>
+
+        <!-- Error States: 404 & 410 -->
+        <div
+          id="link-invalid-state"
+          class="alert error"
+          style="display: none; padding: 1.5rem"
+        >
+          <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem">
+            This link is not valid
+          </h2>
+          <p style="margin: 0">
+            Please check the web address or contact the tenant to provide a
+            valid link.
+          </p>
+        </div>
+
+        <div
+          id="link-expired-state"
+          class="alert error"
+          style="display: none; padding: 1.5rem"
+        >
+          <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem">
+            This link has expired or was replaced. Ask the tenant for a new link
+          </h2>
+          <p style="margin: 0">
+            Links expire automatically or when replaced by the tenant.
+          </p>
+        </div>
+
+        <!-- Empty State -->
+        <div
+          id="empty-state"
+          class="card"
+          style="display: none; text-align: center; padding: 2rem"
+        >
+          <p style="color: var(--text-muted); font-size: 1.1rem; margin: 0">
+            The tenant has not submitted a record yet.
+          </p>
+        </div>
+
+        <!-- Main Content -->
+        <div id="landlord-content" style="display: none">
+          <section class="card" style="margin-bottom: 2rem; padding: 1.5rem">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: baseline;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+              "
+            >
+              <h2 id="property-label" style="margin-bottom: 0.25rem"></h2>
+              <span
+                id="tenancy-status"
+                class="badge"
+                style="
+                  padding: 0.25rem 0.65rem;
+                  border-radius: 4px;
+                  font-size: 0.85rem;
+                  font-weight: 600;
+                  background: #e5e7eb;
+                  color: #374151;
+                "
+              ></span>
+            </div>
+            <p
+              id="property-address"
+              style="color: var(--text-muted); margin-bottom: 1rem"
+            ></p>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1rem;
+                font-size: 0.95rem;
+              "
+            >
+              <div><strong>Tenant:</strong> <span id="tenant-name"></span></div>
+              <div>
+                <strong>Deposit:</strong> <span id="deposit-amount"></span>
+              </div>
+              <div id="refund-window-row">
+                <strong>Refund Window:</strong>
+                <span id="refund-window"></span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Inspections List -->
+          <div id="inspections-container"></div>
+        </div>
+      </main>
+      <footer
+        style="
+          margin-top: 3rem;
+          text-align: center;
+          color: var(--text-muted);
+          font-size: 0.85rem;
+        "
+      >
+        <p>
+          Handover records what the parties entered and acknowledged. It is not
+          legal advice.
+        </p>
+      </footer>
+    </div>
+
+    <script type="module" src="/js/pages/landlord.js"></script>
+  </body>
+</html>

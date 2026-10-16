@@ -48,3 +48,27 @@ export function createMediaUploadRateLimiter(options = {}) {
 }
 
 export const mediaUploadRateLimiter = createMediaUploadRateLimiter();
+
+export function createLandlordRateLimiter(options = {}) {
+  const windowMs = options.windowMs || 60 * 1000;
+  const max = options.max !== undefined ? options.max : 60;
+
+  return rateLimit({
+    windowMs,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (_req, _res, next) => {
+      next(
+        new AppError(
+          429,
+          'RATE_LIMIT_EXCEEDED',
+          'Too many requests, please try again later'
+        )
+      );
+    },
+    ...options,
+  });
+}
+
+export const landlordRateLimiter = createLandlordRateLimiter();
