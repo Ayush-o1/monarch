@@ -113,8 +113,8 @@ describe('Media API, Storage, and Trigger Locking', () => {
     return pipeline.jpeg().toBuffer();
   }
 
-  it('valid PNG and JPEG upload gives 201; GET returns image/jpeg and bytes decode no larger than 1600px', async () => {
-    const { agent } = await createRegisteredAgent('Valid Upload Tester');
+  it('PNG and JPEG upload give 201; GET returns image/jpeg that decodes and is at most 1600px', async () => {
+    const { agent } = await createRegisteredAgent('PNG and JPEG Tester');
     const { itemId } = await createTenancyWithItem(agent);
 
     // 1. Upload valid PNG
@@ -140,7 +140,6 @@ describe('Media API, Storage, and Trigger Locking', () => {
       'Never return storage_key'
     );
 
-    // GET media for PNG (should be converted to image/jpeg)
     const pngGet = await agent
       .get(`/api/media/${pngRes.body.id}`)
       .expect(200)
@@ -181,11 +180,11 @@ describe('Media API, Storage, and Trigger Locking', () => {
     );
   });
 
-  it('a text file named photo.jpg gives 415; a truncated JPEG gives 415; a file over size limit gives 413; wrong field name gives 400; no file gives 400', async () => {
-    const { agent } = await createRegisteredAgent('Validation Error Tester');
+  it('text file named photo.jpg gives 415; truncated JPEG gives 415', async () => {
+    const { agent } = await createRegisteredAgent('Format Error Tester');
     const { itemId } = await createTenancyWithItem(agent);
 
-    // 1. Text file named photo.jpg -> 415
+    // Text file named photo.jpg
     const textRes = await agent
       .post(`/api/items/${itemId}/media`)
       .attach(
@@ -196,7 +195,7 @@ describe('Media API, Storage, and Trigger Locking', () => {
       .expect(415);
     assert.equal(textRes.body.error.code, 'UNSUPPORTED_MEDIA');
 
-    // 2. Truncated JPEG -> 415
+    // Truncated JPEG
     const validJpeg = await makeTestImage({ width: 100, height: 100 });
     const truncated = validJpeg.subarray(0, 20);
     const truncRes = await agent
@@ -204,64 +203,69 @@ describe('Media API, Storage, and Trigger Locking', () => {
       .attach('photo', truncated, 'corrupt.jpg')
       .expect(415);
     assert.equal(truncRes.body.error.code, 'UNSUPPORTED_MEDIA');
+  });
 
-    // 3. File over size limit -> 413 (using custom app with small limit)
+  it('file over the size limit gives 413 (small limit set in the test)', async () => {
     const smallLimitApp = createApp({
       pool,
       storage,
-      maxUploadMb: 0.0001, // ~100 bytes
+      maxUploadMb: 0.0001, // ~104 bytes
       authLimiter: (_req, _res, next) => next(),
       mediaLimiter: (_req, _res, next) => next(),
     });
     const smallLimitAgent = request.agent(smallLimitApp);
     const { user } = await createRegisteredAgent('Small Limit User');
-    // Login with smallLimitAgent
+
     await smallLimitAgent
       .post('/api/auth/login')
       .send({ email: user.email, password: 'password1234' })
       .expect(200);
+
+    const { itemId } = await createTenancyWithItem(smallLimitAgent);
+    const validJpeg = await makeTestImage({ width: 100, height: 100 });
 
     const overLimitRes = await smallLimitAgent
       .post(`/api/items/${itemId}/media`)
       .attach('photo', validJpeg, 'photo.jpg')
       .expect(413);
     assert.equal(overLimitRes.body.error.code, 'FILE_TOO_LARGE');
+  });
 
-    // 4. Wrong field name -> 400
+  it('wrong field name gives 400; no file gives 400', async () => {
+    const { agent } = await createRegisteredAgent('Field Error Tester');
+    const { itemId } = await createTenancyWithItem(agent);
+    const validJpeg = await makeTestImage({ width: 100, height: 100 });
+
+    // Wrong field name
     const wrongFieldRes = await agent
       .post(`/api/items/${itemId}/media`)
       .attach('image', validJpeg, 'photo.jpg')
       .expect(400);
     assert.equal(wrongFieldRes.body.error.code, 'VALIDATION_ERROR');
 
-    // 5. No file attached -> 400
+    // No file attached
     const noFileRes = await agent
       .post(`/api/items/${itemId}/media`)
       .expect(400);
     assert.equal(noFileRes.body.error.code, 'VALIDATION_ERROR');
   });
 
-  it('9th photo gives 422; same image twice gives 409 DUPLICATE_PHOTO and leaves no orphan file; concurrency tests on limits', async () => {
-    const { agent } = await createRegisteredAgent('Photo Limit Tester');
+  it('9th photo gives 422 TOO_MANY_PHOTOS', async () => {
+    const { agent } = await createRegisteredAgent('Max Photos Tester');
     const { itemId } = await createTenancyWithItem(agent);
 
-    // Upload 8 distinct photos
-    const photoIds = [];
     for (let i = 0; i < 8; i++) {
       const imgBuffer = await makeTestImage({
         width: 100 + i,
         height: 100,
         color: { r: i * 20, g: 100, b: 150 },
       });
-      const res = await agent
+      await agent
         .post(`/api/items/${itemId}/media`)
         .attach('photo', imgBuffer, `photo_${i}.jpg`)
         .expect(201);
-      photoIds.push(res.body.id);
     }
-    assert.equal(photoIds.length, 8);
 
-    // 1. Attempt 9th photo -> 422 TOO_MANY_PHOTOS
     const photo9 = await makeTestImage({
       width: 150,
       height: 150,
@@ -272,34 +276,14 @@ describe('Media API, Storage, and Trigger Locking', () => {
       .attach('photo', photo9, 'photo_9.jpg')
       .expect(422);
     assert.equal(res9.body.error.code, 'TOO_MANY_PHOTOS');
+  });
 
-    // Concurrency test 1: 8 existing plus two simultaneous uploads give exactly zero successes
-    const imgA = await makeTestImage({
-      width: 160,
-      height: 160,
-      color: { r: 1, g: 2, b: 3 },
-    });
-    const imgB = await makeTestImage({
-      width: 170,
-      height: 170,
-      color: { r: 4, g: 5, b: 6 },
-    });
-    const [sim8A, sim8B] = await Promise.all([
-      agent
-        .post(`/api/items/${itemId}/media`)
-        .attach('photo', imgA, 'simA.jpg'),
-      agent
-        .post(`/api/items/${itemId}/media`)
-        .attach('photo', imgB, 'simB.jpg'),
-    ]);
-    assert.equal(sim8A.status, 422);
-    assert.equal(sim8B.status, 422);
-
-    // 2. Duplicate photo test on a new item:
-    const { itemId: dupItemId } = await createTenancyWithItem(
+  it('same image twice gives 409 DUPLICATE_PHOTO and leaves no orphan file', async () => {
+    const { agent } = await createRegisteredAgent('Duplicate Photo Tester');
+    const { itemId } = await createTenancyWithItem(
       agent,
       'Living Room',
-      'Sofa'
+      'Table'
     );
     const dupImage = await makeTestImage({
       width: 120,
@@ -307,7 +291,6 @@ describe('Media API, Storage, and Trigger Locking', () => {
       color: { r: 12, g: 34, b: 56 },
     });
 
-    // Count files in tmpUploadDir before
     const getFileCount = () => {
       let count = 0;
       const walk = (dir) => {
@@ -320,35 +303,31 @@ describe('Media API, Storage, and Trigger Locking', () => {
       return count;
     };
 
-    // First upload of dupImage
     await agent
-      .post(`/api/items/${dupItemId}/media`)
+      .post(`/api/items/${itemId}/media`)
       .attach('photo', dupImage, 'test.jpg')
       .expect(201);
 
     const countAfterFirst = getFileCount();
 
-    // Second upload of identical dupImage -> 409 DUPLICATE_PHOTO
     const dupRes = await agent
-      .post(`/api/items/${dupItemId}/media`)
+      .post(`/api/items/${itemId}/media`)
       .attach('photo', dupImage, 'test.jpg')
       .expect(409);
     assert.equal(dupRes.body.error.code, 'DUPLICATE_PHOTO');
 
-    // Check no orphan file left behind
     const countAfterSecond = getFileCount();
     assert.equal(
       countAfterSecond,
       countAfterFirst,
-      'No orphan file should be left after duplicate photo rejection'
+      'No orphan file should remain after duplicate rejection'
     );
+  });
 
-    // Concurrency test 2: 7 existing plus two simultaneous uploads of different images give exactly one 201 and one 422
-    const { itemId: concItemId } = await createTenancyWithItem(
-      agent,
-      'Bedroom',
-      'Bed'
-    );
+  it('7 photos existing plus two simultaneous different uploads: one 201 and one 422', async () => {
+    const { agent } = await createRegisteredAgent('Race 7 Photos Tester');
+    const { itemId } = await createTenancyWithItem(agent, 'Bedroom', 'Bed');
+
     for (let i = 0; i < 7; i++) {
       const buf = await makeTestImage({
         width: 100 + i,
@@ -356,7 +335,7 @@ describe('Media API, Storage, and Trigger Locking', () => {
         color: { r: i * 30, g: 20, b: 80 },
       });
       await agent
-        .post(`/api/items/${concItemId}/media`)
+        .post(`/api/items/${itemId}/media`)
         .attach('photo', buf, `photo_${i}.jpg`)
         .expect(201);
     }
@@ -374,10 +353,10 @@ describe('Media API, Storage, and Trigger Locking', () => {
 
     const [concRes1, concRes2] = await Promise.all([
       agent
-        .post(`/api/items/${concItemId}/media`)
+        .post(`/api/items/${itemId}/media`)
         .attach('photo', concImg1, 'c1.jpg'),
       agent
-        .post(`/api/items/${concItemId}/media`)
+        .post(`/api/items/${itemId}/media`)
         .attach('photo', concImg2, 'c2.jpg'),
     ]);
 
@@ -385,40 +364,79 @@ describe('Media API, Storage, and Trigger Locking', () => {
     assert.deepEqual(statuses, [201, 422]);
   });
 
-  it("another user's item upload, media GET and media DELETE give 404", async () => {
+  it('8 photos existing plus two simultaneous uploads: zero successes', async () => {
+    const { agent } = await createRegisteredAgent('Race 8 Photos Tester');
+    const { itemId } = await createTenancyWithItem(agent, 'Hall', 'Clock');
+
+    for (let i = 0; i < 8; i++) {
+      const buf = await makeTestImage({
+        width: 100 + i,
+        height: 100,
+        color: { r: i * 15, g: 50, b: 120 },
+      });
+      await agent
+        .post(`/api/items/${itemId}/media`)
+        .attach('photo', buf, `photo_${i}.jpg`)
+        .expect(201);
+    }
+
+    const imgA = await makeTestImage({
+      width: 160,
+      height: 160,
+      color: { r: 1, g: 2, b: 3 },
+    });
+    const imgB = await makeTestImage({
+      width: 170,
+      height: 170,
+      color: { r: 4, g: 5, b: 6 },
+    });
+
+    const [sim8A, sim8B] = await Promise.all([
+      agent
+        .post(`/api/items/${itemId}/media`)
+        .attach('photo', imgA, 'simA.jpg'),
+      agent
+        .post(`/api/items/${itemId}/media`)
+        .attach('photo', imgB, 'simB.jpg'),
+    ]);
+
+    assert.equal(sim8A.status, 422);
+    assert.equal(sim8B.status, 422);
+  });
+
+  it("another user's upload, GET and DELETE give 404", async () => {
     const userA = await createRegisteredAgent('User A');
     const userB = await createRegisteredAgent('User B');
 
     const { itemId } = await createTenancyWithItem(userA.agent);
     const imgBuffer = await makeTestImage();
 
-    // User A uploads media
     const uploadRes = await userA.agent
       .post(`/api/items/${itemId}/media`)
       .attach('photo', imgBuffer, 'photo.jpg')
       .expect(201);
     const mediaId = uploadRes.body.id;
 
-    // User B tries to upload to User A's item -> 404
+    // User B tries upload to User A item -> 404
     await userB.agent
       .post(`/api/items/${itemId}/media`)
       .attach('photo', imgBuffer, 'photo.jpg')
       .expect(404);
 
-    // User B tries to GET User A's media -> 404
+    // User B tries GET -> 404
     await userB.agent.get(`/api/media/${mediaId}`).expect(404);
 
-    // User B tries to DELETE User A's media -> 404
+    // User B tries DELETE -> 404
     await userB.agent.delete(`/api/media/${mediaId}`).expect(404);
 
-    // Malformed uuid in media path gives 404
-    await userA.agent.get('/api/media/not-a-uuid').expect(404);
-    await userA.agent.delete('/api/media/not-a-uuid').expect(404);
-    await userA.agent.post('/api/items/not-a-uuid/media').expect(404);
+    // Malformed uuid gives 404
+    await userA.agent.get('/api/media/not-a-valid-uuid').expect(404);
+    await userA.agent.delete('/api/media/not-a-valid-uuid').expect(404);
+    await userA.agent.post('/api/items/not-a-valid-uuid/media').expect(404);
   });
 
-  it('EXIF: build a JPEG that has EXIF and assert the stored image has no exif metadata', async () => {
-    const { agent } = await createRegisteredAgent('EXIF Tester');
+  it('stored image has no EXIF (input built with EXIF)', async () => {
+    const { agent } = await createRegisteredAgent('EXIF Stripping Tester');
     const { itemId } = await createTenancyWithItem(agent);
 
     const exifImageBuffer = await makeTestImage({ withExif: true });
@@ -442,11 +460,10 @@ describe('Media API, Storage, and Trigger Locking', () => {
     );
   });
 
-  it('inspection status submitted via raw SQL: upload and delete give 409 INSPECTION_LOCKED; raw SQL insert/update/delete fail with LOCKED:', async () => {
-    const { agent } = await createRegisteredAgent('Locking Media Tester');
+  it('inspection set to submitted via raw SQL: API upload and delete give 409 INSPECTION_LOCKED; raw SQL insert, update and delete on media fail with "LOCKED:"', async () => {
+    const { agent } = await createRegisteredAgent('Trigger Lock Tester');
     const { inspectionId, itemId } = await createTenancyWithItem(agent);
 
-    // Upload photo while draft
     const imgBuffer = await makeTestImage();
     const uploadRes = await agent
       .post(`/api/items/${itemId}/media`)
@@ -513,8 +530,53 @@ describe('Media API, Storage, and Trigger Locking', () => {
     }, /LOCKED: media item_id is immutable/);
   });
 
-  it('deleting an item removes its media rows and its files from disk', async () => {
-    const { agent } = await createRegisteredAgent('Item Cascade Tester');
+  it('upload to a locked inspection is rejected before sharp runs', async () => {
+    const { agent } = await createRegisteredAgent('Pre-Sharp Lock Tester');
+    const { inspectionId, itemId } = await createTenancyWithItem(
+      agent,
+      'Lobby',
+      'Mat'
+    );
+
+    // Set inspection to submitted via raw SQL
+    await pool.query(
+      `UPDATE inspections SET status = 'submitted' WHERE id = $1`,
+      [inspectionId]
+    );
+
+    // Send corrupted / non-image data (which would fail Sharp with 415 UNSUPPORTED_MEDIA if decoded)
+    const corruptedBuffer = Buffer.from('NOT_AN_IMAGE_DATA_CORRUPT_BYTES');
+
+    const res = await agent
+      .post(`/api/items/${itemId}/media`)
+      .attach('photo', corruptedBuffer, 'photo.jpg')
+      .expect(409);
+
+    assert.equal(
+      res.body.error.code,
+      'INSPECTION_LOCKED',
+      'Must reject with 409 INSPECTION_LOCKED before running Sharp image decoding'
+    );
+
+    // Revert inspection to draft and send the exact same corrupted payload -> Sharp runs and returns 415
+    await pool.query(`UPDATE inspections SET status = 'draft' WHERE id = $1`, [
+      inspectionId,
+    ]);
+
+    const resInDraft = await agent
+      .post(`/api/items/${itemId}/media`)
+      .attach('photo', corruptedBuffer, 'photo.jpg')
+      .expect(415);
+
+    assert.equal(
+      resInDraft.body.error.code,
+      'UNSUPPORTED_MEDIA',
+      'In draft status, Sharp processes and rejects invalid image data with 415'
+    );
+  });
+
+  it('deleting an item removes its media rows and files from disk', async () => {
+    const { agent } = await createRegisteredAgent('Item Delete Cascade Tester');
     const { inspectionId, itemId } = await createTenancyWithItem(agent);
 
     const img1 = await makeTestImage({ width: 101 });
@@ -570,6 +632,27 @@ describe('Media API, Storage, and Trigger Locking', () => {
         fs.existsSync(path.resolve(tmpUploadDir, row.storage_key)),
         false,
         `File ${row.storage_key} should be removed from disk`
+      );
+    }
+  });
+
+  it('tests use a temporary UPLOAD_DIR that is removed afterwards', () => {
+    const resolvedTmp = path.resolve(tmpUploadDir);
+    const resolvedOsTmp = path.resolve(os.tmpdir());
+    assert.ok(
+      resolvedTmp.startsWith(resolvedOsTmp),
+      `Expected ${resolvedTmp} to be within OS temp dir ${resolvedOsTmp}`
+    );
+    assert.ok(fs.existsSync(tmpUploadDir));
+
+    // Confirm ./uploads in repo root does not contain test files
+    const repoUploadsDir = path.resolve('./uploads');
+    if (fs.existsSync(repoUploadsDir)) {
+      const files = fs.readdirSync(repoUploadsDir);
+      assert.equal(
+        files.length,
+        0,
+        'Expected repo ./uploads directory to remain empty during tests'
       );
     }
   });

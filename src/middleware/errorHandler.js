@@ -26,6 +26,21 @@ export function errorHandler(err, req, res, _next) {
     });
   }
 
+  // Postgres PL/pgSQL trigger parent item not found exception
+  if (
+    err.message &&
+    (err.message.includes('Parent inspection item not found') ||
+      err.message.includes('Parent inspection not found'))
+  ) {
+    return res.status(404).json({
+      error: {
+        code: 'NOT_FOUND',
+        message: err.message,
+        details: {},
+      },
+    });
+  }
+
   // Postgres unique violation on inspection items
   if (
     err.code === '23505' &&

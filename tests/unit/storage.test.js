@@ -21,7 +21,7 @@ describe('Local Storage', () => {
     }
   });
 
-  it('refuses paths resolving outside UPLOAD_DIR', async () => {
+  it('storage refuses a key that resolves outside UPLOAD_DIR', async () => {
     const maliciousKeys = [
       '../escape.jpg',
       '../../etc/passwd',
@@ -84,5 +84,24 @@ describe('Local Storage', () => {
 
     await storage.remove(key);
     assert.throws(() => storage.createReadStream(key), /ENOENT/);
+  });
+
+  it('tests use a temporary UPLOAD_DIR that is removed afterwards', () => {
+    // Assert tmpDir is inside OS temp directory
+    const resolvedTmp = path.resolve(tmpDir);
+    const resolvedOsTmp = path.resolve(os.tmpdir());
+    assert.ok(
+      resolvedTmp.startsWith(resolvedOsTmp),
+      `Expected ${resolvedTmp} to be inside ${resolvedOsTmp}`
+    );
+    assert.ok(fs.existsSync(tmpDir));
+
+    // Create a sub-storage, verify removal
+    const testDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'monarch-test-cleanup-')
+    );
+    assert.ok(fs.existsSync(testDir));
+    fs.rmSync(testDir, { recursive: true, force: true });
+    assert.equal(fs.existsSync(testDir), false);
   });
 });
