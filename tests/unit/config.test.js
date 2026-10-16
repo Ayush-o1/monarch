@@ -6,14 +6,14 @@ describe('Config validation', () => {
   const validBaseEnv = {
     NODE_ENV: 'development',
     PORT: '3000',
-    DATABASE_URL: 'postgres://localhost:5432/handover_dev',
+    DATABASE_URL: 'postgres://localhost:5432/monarch_dev',
     SESSION_SECRET: 'a-valid-session-secret-that-is-at-least-32-chars-long',
   };
 
   it('succeeds with valid environment variables', () => {
     const config = loadConfig(validBaseEnv);
     assert.equal(config.port, 3000);
-    assert.equal(config.databaseUrl, 'postgres://localhost:5432/handover_dev');
+    assert.equal(config.databaseUrl, 'postgres://localhost:5432/monarch_dev');
     assert.equal(config.cookieSecure, false);
     assert.equal(config.uploadDir, './uploads');
     assert.equal(config.maxUploadMb, 5);
@@ -24,10 +24,10 @@ describe('Config validation', () => {
     const testEnv = {
       ...validBaseEnv,
       NODE_ENV: 'test',
-      TEST_DATABASE_URL: 'postgres://localhost:5432/handover_test',
+      TEST_DATABASE_URL: 'postgres://localhost:5432/monarch_test',
     };
     const config = loadConfig(testEnv);
-    assert.equal(config.databaseUrl, 'postgres://localhost:5432/handover_test');
+    assert.equal(config.databaseUrl, 'postgres://localhost:5432/monarch_test');
     assert.equal(config.isTest, true);
   });
 

@@ -33,8 +33,8 @@ A shared move-in and move-out condition record for rentals, where landlord depos
 4. Create local PostgreSQL databases:
 
    ```bash
-   createdb handover_dev
-   createdb handover_test
+   createdb monarch_dev
+   createdb monarch_test
    ```
 
 5. Run database migrations:

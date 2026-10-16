@@ -30,12 +30,12 @@ Tests use Node.js built-in test runner (`node:test`) and `supertest`.
 
 ## 2. Test Database Setup & Reset
 
-The test suite runs against a dedicated test database (`handover_test`).
+The test suite runs against a dedicated test database (`monarch_test`).
 
 1. **Create the database (one-time setup):**
 
    ```bash
-   createdb handover_test
+   createdb monarch_test
    ```
 
 2. **Run migrations against test DB:**
@@ -46,8 +46,8 @@ The test suite runs against a dedicated test database (`handover_test`).
 
 3. **Reset test database (if clean slate is needed):**
    ```bash
-   dropdb --if-exists handover_test
-   createdb handover_test
+   dropdb --if-exists monarch_test
+   createdb monarch_test
    npm run migrate:test
    ```
 
