@@ -60,7 +60,7 @@ monarch/
 
 ### Tables
 
-1. **users**: `id`, `name (1..80)`, `email`, `password_hash`, `created_at`. Unique index on `lower(email)`.
+1. **users**: `id`, `name (1..80, trimmed)`, `email (3..255)`, `password_hash`, `created_at`. Unique index on `lower(email)`. Check constraints on name and email length (`users_name_length_check`, `users_email_length_check`).
 2. **session**: `sid varchar primary key`, `sess json not null`, `expire timestamp(6) not null`, index on `expire`.
 3. **tenancies**: `id`, `tenant_id -> users`, `property_label (1..80)`, `address (<=300, null ok)`, `landlord_name (<=80, null ok)`, `deposit_paise (CHECK 1..1_000_000_000)`, `refund_window_days (CHECK 1..365, null ok)`, `lease_start_date (date, null ok)`, `status CHECK in ('active','move_out','settling','closed') default 'active'`, `closed_at null`, `created_at`, `updated_at`. Index on `(tenant_id, created_at desc)`.
 4. **inspections**: `id`, `tenancy_id -> tenancies`, `type CHECK in ('move_in','move_out')`, `status CHECK in ('draft','submitted','acknowledged') default 'draft'`, `submitted_at`, `acknowledged_at`, `acknowledged_by_name`, `created_at`. UNIQUE `(tenancy_id, type)`.

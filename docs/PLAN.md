@@ -11,7 +11,7 @@
 - [x] **Phase 1 — Database layer and migrations**
   - Install `pg`, create connection pool with bigint parsing
   - Migration runner with transaction safety and sha256 checksum tracking
-  - Migration `001_users_sessions.sql` (users and session tables)
+  - Migrations `001_users_sessions.sql` (users, session) and `002_users_checks.sql` (name/email checks)
   - Enhanced health check running database query
   - Test database runner and tests
 
@@ -22,25 +22,25 @@
   - Frontend auth pages (`register.html`, `login.html`), `api.js`, `ui.js`
 
 - [ ] **Phase 3 — Tenancies, timeline, dashboard**
-  - Migration `002_tenancies_inspections_events.sql` (tenancies, inspections with `inspections_guard`, events with append-only triggers)
+  - Migration `003_tenancies_inspections_events.sql` (tenancies, inspections with `inspections_guard`, events with append-only triggers)
   - Event recording helper (`lib/events.js`)
   - Tenancy creation (atomic creation of tenancy + move-in inspection draft + event)
   - Tenancies dashboard (`tenancies.html`, `tenancy.html`) and rupee/paise converter (`public/js/money.js`)
 
 - [ ] **Phase 4 — Inspection items and editor**
-  - Migration `003_inspection_items.sql` with `require_draft_inspection` trigger
+  - Migration `004_inspection_items.sql` with `require_draft_inspection` trigger
   - Item CRUD APIs with 300 items max limit and duplicate checking
   - Inspection editor page (`inspection.html`) with room grouping and quick-add common items
 
 - [ ] **Phase 5 — Photos**
   - Install `multer`, `sharp`
-  - Migration `004_media.sql` with lock trigger and unique `(item_id, sha256)`
+  - Migration `005_media.sql` with lock trigger and unique `(item_id, sha256)`
   - Storage abstraction (`lib/storage/local.js`)
   - Upload pipeline: resize to 1600x1600, strip EXIF, convert to JPEG quality 80, max 8 photos per item
   - Photo attachment UI in inspection editor
 
 - [ ] **Phase 6 — Submit, landlord link, acknowledge and lock**
-  - Migration `005_invites.sql` and token hashing helper (`lib/tokens.js`)
+  - Migration `006_invites.sql` and token hashing helper (`lib/tokens.js`)
   - Inspection submit endpoint with validation
   - Landlord link generation (one-time return of URL, revocation of prior links)
   - Landlord token endpoints and read-only review view (`landlord.html`)
@@ -53,7 +53,7 @@
   - Comparison view (`compare.html`) for tenant and landlord
 
 - [ ] **Phase 8 — Deductions, settlement, close**
-  - Migration `006_deduction_lines.sql`
+  - Migration `007_deduction_lines.sql`
   - Deduction proposals by landlord linked to move-out items, capped at deposit
   - Tenant accept/dispute actions and landlord withdraw action
   - Settlement summary computation

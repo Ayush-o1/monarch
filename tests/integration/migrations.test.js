@@ -50,6 +50,40 @@ describe('Database and Migrations', () => {
     );
   });
 
+  it('fails at database when inserting an empty or whitespace-only name', async () => {
+    const idEmpty = crypto.randomUUID();
+    const idWhitespace = crypto.randomUUID();
+    const emailPrefix = `check_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+    await assert.rejects(
+      async () => {
+        await pool.query(
+          `INSERT INTO users (id, name, email, password_hash) VALUES ($1, $2, $3, $4)`,
+          [idEmpty, '', `${emailPrefix}_1@example.com`, 'hash123']
+        );
+      },
+      (err) => {
+        assert.equal(err.code, '23514');
+        assert.match(err.message, /users_name_length_check/i);
+        return true;
+      }
+    );
+
+    await assert.rejects(
+      async () => {
+        await pool.query(
+          `INSERT INTO users (id, name, email, password_hash) VALUES ($1, $2, $3, $4)`,
+          [idWhitespace, '   ', `${emailPrefix}_2@example.com`, 'hash123']
+        );
+      },
+      (err) => {
+        assert.equal(err.code, '23514');
+        assert.match(err.message, /users_name_length_check/i);
+        return true;
+      }
+    );
+  });
+
   it('refuses to run if an applied migration checksum changed', async () => {
     const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'migrations-test-'));
 
