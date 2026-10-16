@@ -1,0 +1,28 @@
+{
+  "name": "handover",
+  "version": "0.1.0",
+  "description": "A shared move-in and move-out condition record for rentals",
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=.env --watch src/server.js",
+    "start": "node --env-file=.env src/server.js",
+    "migrate": "node --env-file=.env src/db/migrate.js",
+    "migrate:test": "NODE_ENV=test node --env-file=.env src/db/migrate.js",
+    "test": "NODE_ENV=test node --env-file=.env --test --test-concurrency=1 'tests/**/*.test.js'",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": ""
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "helmet": "^8.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "eslint": "^9.20.1",
+    "globals": "^15.15.0",
+    "prettier": "^3.5.1",
+    "supertest": "^7.0.0"
+  }
+}
