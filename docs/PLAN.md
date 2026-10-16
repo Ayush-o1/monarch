@@ -8,7 +8,7 @@
   - Initial project documentation: README, PLAN, ARCHITECTURE, TESTING
   - Unit and integration tests passing
 
-- [ ] **Phase 1 — Database layer and migrations**
+- [x] **Phase 1 — Database layer and migrations**
   - Install `pg`, create connection pool with bigint parsing
   - Migration runner with transaction safety and sha256 checksum tracking
   - Migration `001_users_sessions.sql` (users and session tables)

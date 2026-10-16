@@ -4,11 +4,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AppError } from './lib/errors.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { pool as defaultPool } from './db/pool.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export function createApp() {
+export function createApp({ pool = defaultPool } = {}) {
   const app = express();
   const isProduction = process.env.NODE_ENV === 'production';
 
@@ -37,8 +38,15 @@ export function createApp() {
 
   app.use(express.static(path.join(__dirname, '../public')));
 
-  app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok' });
+  app.get('/api/health', async (_req, res, next) => {
+    try {
+      await pool.query('SELECT 1');
+      res.json({ status: 'ok' });
+    } catch {
+      next(
+        new AppError(503, 'DATABASE_UNAVAILABLE', 'Database is unreachable')
+      );
+    }
   });
 
   app.all('/api/*', (req, _res, next) => {
