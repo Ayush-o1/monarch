@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tenancies — Handover</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Handover</h1>
+        <p id="user-greeting"></p>
+      </header>
+      <main>
+        <h2>Your Tenancies</h2>
+        <p id="loading-state">Loading your account...</p>
+        <div id="content" style="display: none">
+          <p>You have no tenancies yet. Tenancy creation arrives in Phase 3.</p>
+          <button id="logout-btn" style="max-width: 200px; margin-top: 1rem">
+            Log out
+          </button>
+        </div>
+      </main>
+      <footer>
+        <p>
+          Handover records what the parties entered and acknowledged. It is not
+          legal advice.
+        </p>
+      </footer>
+    </div>
+    <script type="module" src="/js/pages/tenancies.js"></script>
+  </body>
+</html>

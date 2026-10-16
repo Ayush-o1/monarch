@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Log in — Handover</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Handover</h1>
+      </header>
+      <main>
+        <h2>Log in</h2>
+        <div id="general-error" class="alert error" role="alert"></div>
+        <form id="login-form" novalidate>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              autocomplete="email"
+              required
+            />
+            <div id="email-error" class="field-error"></div>
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              autocomplete="current-password"
+              required
+            />
+            <div id="password-error" class="field-error"></div>
+          </div>
+          <button type="submit" id="submit-btn">Log in</button>
+        </form>
+        <div class="footer-nav">
+          <p>Don't have an account? <a href="/register.html">Register</a></p>
+        </div>
+      </main>
+      <footer>
+        <p>
+          Handover records what the parties entered and acknowledged. It is not
+          legal advice.
+        </p>
+      </footer>
+    </div>
+    <script type="module" src="/js/pages/login.js"></script>
+  </body>
+</html>

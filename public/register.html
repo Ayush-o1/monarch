@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register — Handover</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Handover</h1>
+      </header>
+      <main>
+        <h2>Create an account</h2>
+        <div id="general-error" class="alert error" role="alert"></div>
+        <form id="register-form" novalidate>
+          <div class="form-group">
+            <label for="name">Full Name</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              autocomplete="name"
+              required
+              maxlength="80"
+            />
+            <div id="name-error" class="field-error"></div>
+          </div>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              autocomplete="email"
+              required
+            />
+            <div id="email-error" class="field-error"></div>
+          </div>
+          <div class="form-group">
+            <label for="password">Password (minimum 10 characters)</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              autocomplete="new-password"
+              required
+              minlength="10"
+              maxlength="128"
+            />
+            <div id="password-error" class="field-error"></div>
+          </div>
+          <button type="submit" id="submit-btn">Register</button>
+        </form>
+        <div class="footer-nav">
+          <p>Already have an account? <a href="/login.html">Log in</a></p>
+        </div>
+      </main>
+      <footer>
+        <p>
+          Handover records what the parties entered and acknowledged. It is not
+          legal advice.
+        </p>
+      </footer>
+    </div>
+    <script type="module" src="/js/pages/register.js"></script>
+  </body>
+</html>
