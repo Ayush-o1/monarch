@@ -7,6 +7,7 @@ import {
   patchInspectionItem,
   deleteInspectionItem,
   getInspectionWithItems,
+  submitInspection,
 } from './service.js';
 import { AppError } from '../../lib/errors.js';
 
@@ -34,6 +35,28 @@ export function createItemsRouter({ pool, storage } = {}) {
           pool
         );
         res.status(200).json(inspection);
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  // POST /api/inspections/:id/submit
+  router.post(
+    '/api/inspections/:id/submit',
+    requireUser,
+    validateIdParam,
+    async (req, res, next) => {
+      try {
+        const result = await submitInspection(
+          req.params.id,
+          req.session.user.id,
+          {
+            pool,
+            actorName: req.session.user.name,
+          }
+        );
+        res.status(200).json(result);
       } catch (err) {
         next(err);
       }

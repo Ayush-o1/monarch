@@ -436,6 +436,24 @@ async function loadInspection() {
       addItemSection.style.display = 'block';
     }
 
+    const changeBanner = document.getElementById('change-request-banner');
+    if (changeBanner) {
+      if (isDraft && inspection.lastChangeRequest) {
+        setText(
+          'change-request-by',
+          inspection.lastChangeRequest.by || 'Landlord'
+        );
+        const dt = inspection.lastChangeRequest.at
+          ? new Date(inspection.lastChangeRequest.at).toLocaleDateString()
+          : '';
+        setText('change-request-at', dt);
+        setText('change-request-note', inspection.lastChangeRequest.note || '');
+        changeBanner.style.display = 'block';
+      } else {
+        changeBanner.style.display = 'none';
+      }
+    }
+
     renderItems(inspection);
   } catch (err) {
     loadingState.style.display = 'none';

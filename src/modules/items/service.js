@@ -1,6 +1,7 @@
 import { pool as defaultPool } from '../../db/pool.js';
 import { AppError } from '../../lib/errors.js';
 import defaultStorage from '../../lib/storage/local.js';
+import { recordEvent as defaultRecordEvent } from '../../lib/events.js';
 
 export async function createInspectionItem(
   inspectionId,
@@ -290,8 +291,173 @@ export async function getInspectionWithItems(
     }
   }
 
+  let lastChangeRequest = null;
+  if (inspection.status === 'draft') {
+    const eventRes = await pool.query(
+      `SELECT actor_label, payload, created_at
+       FROM events
+       WHERE tenancy_id = $1
+         AND type = 'changes_requested'
+         AND (payload->>'inspectionId')::uuid = $2
+       ORDER BY id DESC
+       LIMIT 1`,
+      [inspection.tenancy_id, inspectionId]
+    );
+
+    if (eventRes.rowCount > 0) {
+      const ev = eventRes.rows[0];
+      lastChangeRequest = {
+        note: ev.payload.note,
+        by: ev.actor_label,
+        at: ev.created_at,
+      };
+    }
+  }
+
   return {
     ...inspection,
     items,
+    lastChangeRequest,
   };
+}
+
+export async function submitInspection(
+  inspectionId,
+  tenantId,
+  {
+    pool = defaultPool,
+    recordEventFn = defaultRecordEvent,
+    actorName = 'Tenant',
+  } = {}
+) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // 1. Load inspection joined to tenancy filtered by session user with FOR UPDATE
+    const inspRes = await client.query(
+      `SELECT i.id, i.tenancy_id, i.type, i.status, t.status AS tenancy_status
+       FROM inspections i
+       JOIN tenancies t ON t.id = i.tenancy_id
+       WHERE i.id = $1 AND t.tenant_id = $2
+       FOR UPDATE OF i`,
+      [inspectionId, tenantId]
+    );
+
+    if (inspRes.rowCount === 0) {
+      throw new AppError(404, 'NOT_FOUND', 'Inspection not found');
+    }
+
+    const inspection = inspRes.rows[0];
+
+    // Rule 1: status must be draft else 409 INSPECTION_NOT_DRAFT
+    if (inspection.status !== 'draft') {
+      throw new AppError(
+        409,
+        'INSPECTION_NOT_DRAFT',
+        'Inspection is not in draft status'
+      );
+    }
+
+    // Rule 2: for type move_in the tenancy status must be active else 409
+    if (
+      inspection.type === 'move_in' &&
+      inspection.tenancy_status !== 'active'
+    ) {
+      throw new AppError(
+        409,
+        'INVALID_STATE',
+        'Tenancy must be active to submit move-in inspection'
+      );
+    }
+
+    // Query items and media counts
+    const itemsRes = await client.query(
+      `SELECT item.id, item.room, item.name, item.condition,
+              COUNT(m.id)::int AS photo_count
+       FROM inspection_items item
+       LEFT JOIN media m ON m.item_id = item.id
+       WHERE item.inspection_id = $1
+       GROUP BY item.id, item.room, item.name, item.condition
+       ORDER BY item.position ASC, item.created_at ASC`,
+      [inspectionId]
+    );
+
+    // Rule 3: at least 1 item else 422 NO_ITEMS
+    if (itemsRes.rowCount === 0) {
+      throw new AppError(
+        422,
+        'NO_ITEMS',
+        'Inspection must contain at least one item'
+      );
+    }
+
+    // Rule 4: every item needs a condition else 422 INCOMPLETE_ITEMS with details listing {id, room, name}
+    const incompleteItems = [];
+    let totalPhotos = 0;
+    let itemsWithoutPhotos = 0;
+
+    for (const item of itemsRes.rows) {
+      if (!item.condition) {
+        incompleteItems.push({
+          id: item.id,
+          room: item.room,
+          name: item.name,
+        });
+      }
+      const pCount = Number(item.photo_count || 0);
+      totalPhotos += pCount;
+      if (pCount === 0) {
+        itemsWithoutPhotos++;
+      }
+    }
+
+    if (incompleteItems.length > 0) {
+      throw new AppError(
+        422,
+        'INCOMPLETE_ITEMS',
+        'All items must have a condition assigned before submission',
+        incompleteItems
+      );
+    }
+
+    // Update inspection status to submitted
+    const updateRes = await client.query(
+      `UPDATE inspections
+       SET status = 'submitted', submitted_at = now()
+       WHERE id = $1
+       RETURNING id, tenancy_id, type, status, submitted_at, acknowledged_at, acknowledged_by_name, created_at`,
+      [inspectionId]
+    );
+
+    // Record event inspection_submitted
+    await recordEventFn(client, {
+      tenancyId: inspection.tenancy_id,
+      actorType: 'tenant',
+      actorLabel: actorName,
+      type: 'inspection_submitted',
+      payload: {
+        inspectionId: inspection.id,
+        type: inspection.type,
+        itemCount: itemsRes.rowCount,
+        photoCount: totalPhotos,
+        itemsWithoutPhotos,
+      },
+    });
+
+    await client.query('COMMIT');
+
+    return {
+      inspection: updateRes.rows[0],
+      warnings: {
+        itemsWithoutPhotos,
+      },
+    };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
