@@ -421,6 +421,48 @@ async function loadLandlordView() {
       emptyState.style.display = 'block';
     } else {
       emptyState.style.display = 'none';
+
+      const hasMoveOut = inspections.some((i) => i.type === 'move_out');
+      if (hasMoveOut) {
+        const compareBanner = document.createElement('div');
+        compareBanner.className = 'card';
+        compareBanner.style.marginBottom = '1.5rem';
+        compareBanner.style.padding = '1.25rem';
+        compareBanner.style.background = '#f0fdf4';
+        compareBanner.style.border = '1px solid #86efac';
+        compareBanner.style.borderRadius = '6px';
+        compareBanner.style.display = 'flex';
+        compareBanner.style.justifyContent = 'space-between';
+        compareBanner.style.alignItems = 'center';
+        compareBanner.style.flexWrap = 'wrap';
+        compareBanner.style.gap = '1rem';
+
+        const textDiv = document.createElement('div');
+        const h4 = document.createElement('h4');
+        h4.style.margin = '0 0 0.25rem 0';
+        h4.textContent = 'Move-out Inspection Available';
+        const p = document.createElement('p');
+        p.style.margin = '0';
+        p.style.fontSize = '0.9rem';
+        p.style.color = 'var(--text-muted)';
+        p.textContent =
+          'Compare move-in and move-out conditions and photos side-by-side.';
+        textDiv.appendChild(h4);
+        textDiv.appendChild(p);
+
+        const compLink = document.createElement('a');
+        compLink.id = 'landlord-compare-link';
+        compLink.href = `/l/${encodeURIComponent(token)}/compare`;
+        compLink.className = 'btn btn-primary';
+        compLink.style.width = 'auto';
+        compLink.style.textDecoration = 'none';
+        compLink.textContent = 'View Comparison →';
+
+        compareBanner.appendChild(textDiv);
+        compareBanner.appendChild(compLink);
+        inspectionsContainer.appendChild(compareBanner);
+      }
+
       for (const insp of inspections) {
         inspectionsContainer.appendChild(renderInspection(insp, t.status));
       }

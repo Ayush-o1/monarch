@@ -74,6 +74,11 @@ function renderEventItem(ev) {
     if (ev.type === 'inspection_acknowledged') {
       parts.push('Inspection acknowledged and locked');
     }
+    if (ev.type === 'move_out_started') {
+      parts.push(
+        `Move-out inspection started (${ev.payload.itemCount || 0} items cloned)`
+      );
+    }
     if (ev.type === 'invite_created' && ev.payload.expiresAt) {
       parts.push(
         `Active until ${new Date(ev.payload.expiresAt).toLocaleDateString()}`
@@ -93,14 +98,7 @@ function setupInspectionCard(cardActionEl, inspection, tenancyId, reloadFn) {
   if (!cardActionEl) return;
   cardActionEl.textContent = '';
 
-  if (!inspection) {
-    const p = document.createElement('p');
-    p.style.fontSize = '0.875rem';
-    p.style.color = 'var(--text-muted)';
-    p.textContent = 'Move-out comparison arrives in Phase 7.';
-    cardActionEl.appendChild(p);
-    return;
-  }
+  if (!inspection) return;
 
   const container = document.createElement('div');
   container.style.display = 'flex';
@@ -179,6 +177,143 @@ function setupInspectionCard(cardActionEl, inspection, tenancyId, reloadFn) {
   cardActionEl.appendChild(container);
 }
 
+function setupMoveOutCard(cardActionEl, moveOut, moveIn, tenancyId, reloadFn) {
+  if (!cardActionEl) return;
+  cardActionEl.textContent = '';
+
+  // 1. Move-in must be submitted or acknowledged before move-out can start
+  if (
+    !moveIn ||
+    (moveIn.status !== 'submitted' && moveIn.status !== 'acknowledged')
+  ) {
+    const p = document.createElement('p');
+    p.style.fontSize = '0.875rem';
+    p.style.color = 'var(--text-muted)';
+    p.textContent =
+      'Move-in inspection must be submitted and reviewed before starting move-out.';
+    cardActionEl.appendChild(p);
+    return;
+  }
+
+  // 2. Ready to start move-out inspection
+  if (!moveOut) {
+    const startBtn = document.createElement('button');
+    startBtn.id = 'start-move-out-btn';
+    startBtn.type = 'button';
+    startBtn.className = 'btn btn-primary';
+    startBtn.style.width = 'auto';
+    startBtn.textContent = 'Start Move-out Inspection';
+
+    startBtn.addEventListener('click', async () => {
+      startBtn.disabled = true;
+      try {
+        await apiRequest(
+          `/api/tenancies/${encodeURIComponent(tenancyId)}/move-out`,
+          {
+            method: 'POST',
+          }
+        );
+        await reloadFn();
+      } catch (err) {
+        alert(err.message || 'Failed to start move-out inspection');
+        startBtn.disabled = false;
+      }
+    });
+
+    cardActionEl.appendChild(startBtn);
+    return;
+  }
+
+  // 3. Move-out exists
+  const container = document.createElement('div');
+  container.style.display = 'flex';
+  container.style.gap = '0.75rem';
+  container.style.alignItems = 'center';
+  container.style.flexWrap = 'wrap';
+
+  const link = document.createElement('a');
+  link.href = `/inspection.html?id=${encodeURIComponent(moveOut.id)}`;
+  link.textContent =
+    moveOut.status === 'draft' ? 'Open editor →' : 'View inspection →';
+  link.className = 'btn btn-secondary';
+  link.style.width = 'auto';
+  link.style.textDecoration = 'none';
+  container.appendChild(link);
+
+  if (moveOut.status === 'draft') {
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'button';
+    submitBtn.className = 'btn';
+    submitBtn.style.width = 'auto';
+    submitBtn.textContent = 'Submit for review';
+
+    submitBtn.addEventListener('click', async () => {
+      submitBtn.disabled = true;
+      try {
+        const insp = await apiRequest(
+          `/api/inspections/${encodeURIComponent(moveOut.id)}`
+        );
+        const items = insp.items || [];
+        if (items.length === 0) {
+          alert(
+            'Cannot submit: inspection has no items. Add items in the editor first.'
+          );
+          submitBtn.disabled = false;
+          return;
+        }
+
+        const missingCondition = items.filter((it) => !it.condition);
+        if (missingCondition.length > 0) {
+          alert(
+            `Cannot submit: ${missingCondition.length} item(s) are missing a condition in the editor.`
+          );
+          submitBtn.disabled = false;
+          return;
+        }
+
+        const itemsWithoutPhotos = items.filter(
+          (it) => !it.media || it.media.length === 0
+        ).length;
+        const msg =
+          itemsWithoutPhotos > 0
+            ? `Submit move-out inspection for landlord review? ${itemsWithoutPhotos} item(s) have no photo.`
+            : 'Submit move-out inspection for landlord review?';
+
+        if (!confirm(msg)) {
+          submitBtn.disabled = false;
+          return;
+        }
+
+        await apiRequest(
+          `/api/inspections/${encodeURIComponent(moveOut.id)}/submit`,
+          { method: 'POST' }
+        );
+        await reloadFn();
+      } catch (err) {
+        alert(err.message || 'Failed to submit move-out inspection');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    container.appendChild(submitBtn);
+  } else if (
+    moveOut.status === 'submitted' ||
+    moveOut.status === 'acknowledged'
+  ) {
+    const compareLink = document.createElement('a');
+    compareLink.id = 'view-comparison-btn';
+    compareLink.href = `/compare.html?id=${encodeURIComponent(tenancyId)}`;
+    compareLink.textContent = 'View Comparison →';
+    compareLink.className = 'btn btn-primary';
+    compareLink.style.width = 'auto';
+    compareLink.style.textDecoration = 'none';
+    container.appendChild(compareLink);
+  }
+
+  cardActionEl.appendChild(container);
+}
+
 async function loadTenancy() {
   if (!tenancyId) {
     window.location.href = '/tenancies.html';
@@ -245,15 +380,22 @@ async function loadTenancy() {
         'move-out-status',
         tenancy.inspections.moveOut.status.toUpperCase()
       );
-      setupInspectionCard(
+      setupMoveOutCard(
         moveOutAction,
         tenancy.inspections.moveOut,
+        tenancy.inspections?.moveIn,
         tenancyId,
         loadTenancy
       );
     } else {
       setText('move-out-status', 'NOT STARTED');
-      setupInspectionCard(moveOutAction, null, tenancyId, loadTenancy);
+      setupMoveOutCard(
+        moveOutAction,
+        null,
+        tenancy.inspections?.moveIn,
+        tenancyId,
+        loadTenancy
+      );
     }
 
     // Share with landlord section

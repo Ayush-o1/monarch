@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inspection Comparison — Handover</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="container" style="max-width: 900px">
+      <header>
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+          "
+        >
+          <div>
+            <h1>Handover</h1>
+            <p
+              style="
+                color: var(--text-muted);
+                font-size: 0.95rem;
+                margin-bottom: 0;
+              "
+            >
+              Move-in vs Move-out Inspection Comparison
+            </p>
+          </div>
+          <p><a id="back-link" href="#">← Back</a></p>
+        </div>
+      </header>
+
+      <main>
+        <div id="general-error" class="alert error" role="alert"></div>
+        <p id="loading-state">Loading comparison record...</p>
+
+        <!-- Unavailable State (e.g. 409 draft / not ready) -->
+        <div
+          id="unavailable-state"
+          class="card"
+          style="display: none; padding: 2rem; text-align: center"
+        >
+          <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem">
+            Comparison Unavailable
+          </h2>
+          <p
+            id="unavailable-message"
+            style="color: var(--text-muted); margin: 0"
+          >
+            Move-out comparison is only available after the move-out inspection
+            has been submitted.
+          </p>
+        </div>
+
+        <!-- Main Content -->
+        <div id="comparison-content" style="display: none">
+          <!-- Tenancy Card -->
+          <section
+            class="card"
+            style="
+              margin-bottom: 1.5rem;
+              padding: 1.25rem;
+              border: 1px solid var(--border-color);
+              border-radius: 6px;
+            "
+          >
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: baseline;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                margin-bottom: 0.5rem;
+              "
+            >
+              <h2 id="property-label" style="margin-bottom: 0"></h2>
+              <span id="tenancy-status" class="badge"></span>
+            </div>
+            <p
+              id="property-address"
+              style="color: var(--text-muted); margin-bottom: 0.75rem"
+            ></p>
+            <div
+              style="
+                display: flex;
+                gap: 1.5rem;
+                flex-wrap: wrap;
+                font-size: 0.95rem;
+              "
+            >
+              <div id="tenant-row" style="display: none">
+                <strong>Tenant:</strong> <span id="tenant-name"></span>
+              </div>
+              <div id="landlord-row" style="display: none">
+                <strong>Landlord:</strong> <span id="landlord-name"></span>
+              </div>
+              <div>
+                <strong>Deposit:</strong> <span id="deposit-amount"></span>
+              </div>
+              <div id="refund-window-row" style="display: none">
+                <strong>Refund Window:</strong> <span id="refund-window"></span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Summary Metrics Cards -->
+          <section style="margin-bottom: 2rem">
+            <h3 style="margin-bottom: 0.75rem">Summary</h3>
+            <div
+              id="summary-metrics"
+              style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+                gap: 0.75rem;
+              "
+            >
+              <div
+                class="card"
+                style="
+                  padding: 1rem;
+                  text-align: center;
+                  border: 1px solid var(--border-color);
+                  border-radius: 6px;
+                "
+              >
+                <div
+                  id="metric-total"
+                  style="font-size: 1.5rem; font-weight: 700"
+                >
+                  0
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-muted)">
+                  Total Items
+                </div>
+              </div>
+              <div
+                class="card"
+                style="
+                  padding: 1rem;
+                  text-align: center;
+                  border: 1px solid #fecaca;
+                  background: #fef2f2;
+                  border-radius: 6px;
+                "
+              >
+                <div
+                  id="metric-worse"
+                  style="font-size: 1.5rem; font-weight: 700; color: #991b1b"
+                >
+                  0
+                </div>
+                <div
+                  style="font-size: 0.85rem; color: #991b1b; font-weight: 500"
+                >
+                  Worse
+                </div>
+              </div>
+              <div
+                class="card"
+                style="
+                  padding: 1rem;
+                  text-align: center;
+                  border: 1px solid var(--border-color);
+                  background: #f9fafb;
+                  border-radius: 6px;
+                "
+              >
+                <div
+                  id="metric-same"
+                  style="font-size: 1.5rem; font-weight: 700; color: #374151"
+                >
+                  0
+                </div>
+                <div
+                  style="font-size: 0.85rem; color: #4b5563; font-weight: 500"
+                >
+                  Same
+                </div>
+              </div>
+              <div
+                class="card"
+                style="
+                  padding: 1rem;
+                  text-align: center;
+                  border: 1px solid #bbf7d0;
+                  background: #f0fdf4;
+                  border-radius: 6px;
+                "
+              >
+                <div
+                  id="metric-better"
+                  style="font-size: 1.5rem; font-weight: 700; color: #166534"
+                >
+                  0
+                </div>
+                <div
+                  style="font-size: 0.85rem; color: #166534; font-weight: 500"
+                >
+                  Better
+                </div>
+              </div>
+              <div
+                class="card"
+                style="
+                  padding: 1rem;
+                  text-align: center;
+                  border: 1px solid #ddd6fe;
+                  background: #faf5ff;
+                  border-radius: 6px;
+                "
+              >
+                <div
+                  id="metric-added"
+                  style="font-size: 1.5rem; font-weight: 700; color: #5b21b6"
+                >
+                  0
+                </div>
+                <div
+                  style="font-size: 0.85rem; color: #5b21b6; font-weight: 500"
+                >
+                  Added
+                </div>
+              </div>
+              <div
+                class="card"
+                style="
+                  padding: 1rem;
+                  text-align: center;
+                  border: 1px solid #fed7aa;
+                  background: #fff7ed;
+                  border-radius: 6px;
+                "
+              >
+                <div
+                  id="metric-missing"
+                  style="font-size: 1.5rem; font-weight: 700; color: #9a3412"
+                >
+                  0
+                </div>
+                <div
+                  style="font-size: 0.85rem; color: #9a3412; font-weight: 500"
+                >
+                  Missing
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Items Comparison -->
+          <section>
+            <h3 style="margin-bottom: 0.75rem">Item Comparison</h3>
+            <div id="comparison-items-container"></div>
+          </section>
+        </div>
+      </main>
+
+      <!-- Lightbox modal for photo viewing -->
+      <div id="lightbox" class="lightbox-modal">
+        <img
+          id="lightbox-img"
+          class="lightbox-content"
+          src=""
+          alt="Full size photo"
+        />
+      </div>
+
+      <footer
+        style="
+          margin-top: 3rem;
+          text-align: center;
+          color: var(--text-muted);
+          font-size: 0.85rem;
+        "
+      >
+        <p>
+          Handover records what the parties entered and acknowledged. It is not
+          legal advice.
+        </p>
+      </footer>
+    </div>
+
+    <script type="module" src="/js/pages/compare.js"></script>
+  </body>
+</html>
