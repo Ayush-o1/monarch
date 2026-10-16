@@ -67,10 +67,24 @@ _Note: Tests isolate themselves by creating unique users with random emails. Do 
 
 ### Phase 4 Checklist (Items & Lock Trigger)
 
-- [ ] Item CRUD in draft status: create, patch, delete, get inspection items.
-- [ ] Unique item constraint: duplicate room and name (case-insensitive) returns 409 DUPLICATE_ITEM.
-- [ ] Item cap: creating beyond 300 items per inspection returns 422 TOO_MANY_ITEMS.
-- [ ] Inspection lock trigger: updating, deleting, or inserting items when inspection status is not draft fails with 409 INSPECTION_LOCKED (`LOCKED:...`).
-- [ ] Item immutability: attempting to change an item's `inspection_id` fails.
-- [ ] Strict inspections guard: any update on an acknowledged inspection fails.
-- [ ] Concurrency: draft lock during status transition blocks concurrent item creation until resolution.
+- [x] Item CRUD in draft status: create, patch, delete, get inspection items.
+- [x] Unique item constraint: duplicate room and name (case-insensitive) returns 409 DUPLICATE_ITEM.
+- [x] Item cap: creating beyond 300 items per inspection returns 422 TOO_MANY_ITEMS.
+- [x] Inspection lock trigger: updating, deleting, or inserting items when inspection status is not draft fails with 409 INSPECTION_LOCKED (`LOCKED:...`).
+- [x] Item immutability: attempting to change an item's `inspection_id` fails.
+- [x] Strict inspections guard: any update on an acknowledged inspection fails.
+- [x] Concurrency: draft lock during status transition blocks concurrent item creation until resolution.
+
+### Phase 5 Checklist (Photos & Media)
+
+- [ ] Upload valid JPEG, PNG, and WebP: processed to JPEG <= 1600x1600 quality 80.
+- [ ] Format refusal: non-image or corrupted files return 415 UNSUPPORTED_MEDIA.
+- [ ] Size limit: file exceeding limit returns 413 FILE_TOO_LARGE.
+- [ ] Validation: missing photo field returns 400 VALIDATION_ERROR.
+- [ ] Photo cap: 9th photo on an item returns 422 TOO_MANY_PHOTOS.
+- [ ] Deduplication: uploading identical photo to same item returns 409 DUPLICATE_PHOTO without leaving orphan storage files.
+- [ ] Privacy: EXIF and GPS metadata stripped during processing; photos served only through authenticated routes.
+- [ ] Draft lock: uploading or deleting photos on submitted/acknowledged inspections fails with 409 INSPECTION_LOCKED.
+- [ ] Cascade delete: deleting an item cascades to delete media rows and deletes physical files from disk.
+- [ ] Storage traversal defense: refusal of path traversal attempts outside UPLOAD_DIR.
+- [ ] UI: thumbnail strip, loading="lazy", full-view in new tab, upload busy state, and deletion confirmation.

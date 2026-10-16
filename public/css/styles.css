@@ -161,3 +161,86 @@ footer {
   font-size: 0.875rem;
   color: var(--text-muted);
 }
+
+/* Media and thumbnail styles */
+.thumbnail-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.thumbnail-container {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background-color: #f3f4f6;
+}
+
+.thumbnail-container a {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  text-decoration: none;
+}
+
+.thumbnail-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.thumbnail-delete-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  padding: 0;
+  font-size: 0.75rem;
+  line-height: 1;
+  border-radius: 50%;
+  background: rgba(220, 38, 38, 0.85);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumbnail-delete-btn:hover {
+  background: var(--danger-color);
+}
+
+.add-photo-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 4px;
+  background: #f9fafb;
+  cursor: pointer;
+  min-height: 36px;
+  color: var(--text-color);
+  margin-top: 0.5rem;
+}
+
+.add-photo-label:hover {
+  background: #f3f4f6;
+  border-color: var(--link-color);
+}
+
+.photo-upload-status {
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}

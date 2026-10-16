@@ -247,6 +247,146 @@ function renderItems(inspection) {
       fieldsRow.appendChild(noteGroup);
 
       card.appendChild(fieldsRow);
+
+      // Photos section
+      const photosSection = document.createElement('div');
+      photosSection.className = 'item-photos-section';
+      photosSection.style.marginTop = '0.75rem';
+
+      const photoStrip = document.createElement('div');
+      photoStrip.className = 'thumbnail-strip';
+
+      const mediaList = item.media || [];
+      for (const photo of mediaList) {
+        const thumbContainer = document.createElement('div');
+        thumbContainer.className = 'thumbnail-container';
+
+        const photoLink = document.createElement('a');
+        photoLink.href = `/api/media/${encodeURIComponent(photo.id)}`;
+        photoLink.target = '_blank';
+        photoLink.rel = 'noopener';
+
+        const img = document.createElement('img');
+        img.className = 'thumbnail-img';
+        img.src = `/api/media/${encodeURIComponent(photo.id)}`;
+        img.alt = `Photo of ${item.name}`;
+        img.loading = 'lazy';
+
+        photoLink.appendChild(img);
+        thumbContainer.appendChild(photoLink);
+
+        if (isDraft) {
+          const deletePhotoBtn = document.createElement('button');
+          deletePhotoBtn.type = 'button';
+          deletePhotoBtn.className = 'thumbnail-delete-btn';
+          deletePhotoBtn.innerHTML = '&times;';
+          deletePhotoBtn.title = 'Delete photo';
+          deletePhotoBtn.setAttribute(
+            'aria-label',
+            `Delete photo for ${item.name}`
+          );
+
+          deletePhotoBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!confirm('Are you sure you want to delete this photo?')) {
+              return;
+            }
+            deletePhotoBtn.disabled = true;
+            try {
+              await apiRequest(`/api/media/${encodeURIComponent(photo.id)}`, {
+                method: 'DELETE',
+              });
+              await loadInspection();
+            } catch (err) {
+              alert(err.message || 'Failed to delete photo');
+              deletePhotoBtn.disabled = false;
+            }
+          });
+
+          thumbContainer.appendChild(deletePhotoBtn);
+        }
+
+        photoStrip.appendChild(thumbContainer);
+      }
+
+      photosSection.appendChild(photoStrip);
+
+      if (isDraft) {
+        const uploadControls = document.createElement('div');
+        uploadControls.style.display = 'flex';
+        uploadControls.style.alignItems = 'center';
+        uploadControls.style.gap = '0.75rem';
+        uploadControls.style.flexWrap = 'wrap';
+
+        const addPhotoLabel = document.createElement('label');
+        addPhotoLabel.className = 'add-photo-label';
+        addPhotoLabel.textContent = '+ Add photo';
+
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.style.display = 'none';
+
+        const photoStatus = document.createElement('span');
+        photoStatus.className = 'photo-upload-status';
+        photoStatus.style.display = 'none';
+
+        fileInput.addEventListener('change', async () => {
+          const file = fileInput.files && fileInput.files[0];
+          if (!file) return;
+
+          photoStatus.style.display = 'inline';
+          photoStatus.style.color = 'var(--text-muted)';
+          photoStatus.textContent = 'Uploading photo...';
+          addPhotoLabel.style.opacity = '0.6';
+          addPhotoLabel.style.pointerEvents = 'none';
+          fileInput.disabled = true;
+
+          const formData = new FormData();
+          formData.append('photo', file);
+
+          try {
+            await apiRequest(
+              `/api/items/${encodeURIComponent(item.id)}/media`,
+              {
+                method: 'POST',
+                body: formData,
+              }
+            );
+            await loadInspection();
+          } catch (err) {
+            let msg = err.message || 'Upload failed';
+            if (err.status === 413 || err.code === 'FILE_TOO_LARGE') {
+              msg = 'Photo exceeds maximum allowed upload size (5MB).';
+            } else if (err.status === 415 || err.code === 'UNSUPPORTED_MEDIA') {
+              msg =
+                'Unsupported media format. Please upload JPEG, PNG, or WebP.';
+            } else if (err.status === 422 || err.code === 'TOO_MANY_PHOTOS') {
+              msg = 'Maximum 8 photos reached for this item.';
+            } else if (err.status === 409) {
+              if (err.code === 'DUPLICATE_PHOTO') {
+                msg = 'This photo has already been uploaded for this item.';
+              } else if (err.code === 'INSPECTION_LOCKED') {
+                msg = 'Inspection is locked and cannot be modified.';
+              }
+            }
+            photoStatus.textContent = msg;
+            photoStatus.style.color = 'var(--danger-color)';
+            addPhotoLabel.style.opacity = '1';
+            addPhotoLabel.style.pointerEvents = 'auto';
+            fileInput.disabled = false;
+            fileInput.value = '';
+          }
+        });
+
+        addPhotoLabel.appendChild(fileInput);
+        uploadControls.appendChild(addPhotoLabel);
+        uploadControls.appendChild(photoStatus);
+        photosSection.appendChild(uploadControls);
+      }
+
+      card.appendChild(photosSection);
       itemsList.appendChild(card);
     }
 

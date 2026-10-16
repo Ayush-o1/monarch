@@ -67,7 +67,8 @@ monarch/
    - Trigger `inspections_guard`: `type` and `tenancy_id` immutable. Transitions allowed: draft->submitted, submitted->acknowledged, submitted->draft. `acknowledged` is terminal.
 5. **inspection_items**: `id`, `inspection_id -> inspections`, `room (1..80)`, `name (1..80)`, `condition CHECK in ('good','minor_wear','damaged','missing') nullable while draft`, `note (<=1000, null ok)`, `position int`, `created_at`, `updated_at`. Unique index `(inspection_id, lower(room), lower(name))`. Max 300 items per inspection.
    - Trigger `require_draft_inspection`: reads parent inspection `FOR SHARE`; raises `LOCKED:` if status != 'draft'.
-6. **media**: `id`, `item_id -> inspection_items`, `storage_key`, `sha256`, `mime ('image/jpeg')`, `size_bytes`, `uploaded_at`. UNIQUE `(item_id, sha256)`. Max 8 per item. Lock trigger through parent item inspection.
+6. **media**: `id uuid pk default gen_random_uuid()`, `item_id uuid not null references inspection_items(id) on delete cascade`, `storage_key text not null unique`, `sha256 char(64) not null`, `mime text not null check (mime = 'image/jpeg')`, `size_bytes integer not null check (size_bytes > 0)`, `uploaded_at timestamptz not null default now()`. `UNIQUE (item_id, sha256)`. Index on `item_id`. Max 8 photos per item.
+   - Trigger `require_draft_media`: reads parent item's inspection `FOR SHARE`; raises `LOCKED:` if status != 'draft'; `item_id` is immutable; allows foreign-key cascade when parent item is deleted in draft status.
 7. **invites**: `id`, `tenancy_id`, `token_hash (sha256 hex, unique)`, `expires_at`, `revoked_at null`, `last_used_at null`, `created_at`. Partial unique index on `(tenancy_id) WHERE revoked_at IS NULL`.
 8. **deduction_lines**: `id`, `tenancy_id`, `item_id -> inspection_items` (nullable; must belong to move-out inspection), `description (1..300)`, `amount_paise (CHECK > 0)`, `status CHECK in ('proposed','accepted','disputed','withdrawn') default 'proposed'`, `tenant_note (<=500, null ok)`, `created_by_name`, `created_at`, `responded_at`, `updated_at`. Index on `(tenancy_id)`.
 9. **events (append-only)**: `id bigint identity`, `tenancy_id -> tenancies` (no cascade), `actor_type CHECK in ('tenant','landlord','system')`, `actor_label`, `type`, `payload jsonb default '{}'`, `created_at`.
@@ -85,6 +86,13 @@ monarch/
 ### Inspection Submission
 
 - Requires status `draft`, >= 1 item, and all items to have a condition assigned.
+
+### Media Upload Pipeline
+
+- **Authorisation Pre-check**: Before running Sharp image decoding, the server verifies that the parent item exists, belongs to the session tenant, and is part of an inspection in `draft` status (refuses with 404 or 409 fast).
+- **Sharp Processing**: Limits input pixels to 40,000,000 to prevent decompression bomb attacks; allows only JPEG, PNG, and WebP input (415 UNSUPPORTED_MEDIA); applies auto-rotation from EXIF orientation; resizes down to fit inside 1600x1600 without enlargement; encodes to JPEG quality 80. Metadata is intentionally not preserved, which strips sensitive EXIF data including camera details and GPS coordinates.
+- **Deduplication & Storage Coordination**: Generates sha256 of processed bytes. The file is written to local storage first under `${tenancyId}/${randomUUID()}.jpg`. Then, inside a database transaction with a row lock (`FOR UPDATE`) on the item, the photo count is verified (< 8) and inserted. If insertion fails (e.g. duplicate photo on `item_id, sha256`), the file is immediately removed.
+- **Cascade File Removal**: When an item is deleted, storage keys of associated media rows are selected before deletion; upon transaction commit, files are removed from disk.
 
 ### Landlord Actions (Token Link)
 
@@ -167,4 +175,6 @@ All errors follow:
 - **CSRF Defense**: `originCheck` middleware verifies request `Origin` / `Referer` against the `Host` header on all state-changing API requests.
 - **Password Hashing**: Cost 12 bcryptjs. Enforces minimum 10 characters and maximum 72 bytes (the bcrypt truncation boundary). Login timing side-channel mitigation performs a dummy bcrypt compare when an email is not found.
 - **Accepted Trade-off**: Registration reveals whether an email already exists (returns 409 `EMAIL_TAKEN`), allowing an attacker to determine if an email is registered. This is an accepted trade-off to provide immediate feedback to the tenant during registration.
+- **Media Privacy & Authenticated Serving**: All EXIF and GPS geolocation metadata are stripped during Sharp image re-encoding. Media files are stored using server-generated keys and never served directly as public static assets; access is strictly mediated through authenticated routes (`GET /api/media/:id`), ensuring complete tenant tenancy isolation and IDOR prevention.
+- **Known Limitations (HEIC Format)**: True HEIC/HEIF files are not accepted by the backend. Modern mobile browsers (such as Safari on iOS) automatically transcode HEIC photos to standard JPEG when selecting files through an `<input type="file" accept="image/*">` element.
 - **Known Limits (Trigger Security)**: The table owner (the app role in development) can disable triggers, so the append-only and lock triggers stop mistakes and application bugs, not a privileged database attacker; Phase 10 will separate migration (DDL) and app runtime (DML) roles.

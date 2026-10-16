@@ -15,7 +15,9 @@ export async function apiRequest(endpoint, options = {}) {
   };
 
   let body = options.body;
-  if (body && typeof body === 'object') {
+  if (body && typeof FormData !== 'undefined' && body instanceof FormData) {
+    // Do not set Content-Type for FormData; browser sets boundary automatically
+  } else if (body && typeof body === 'object') {
     headers['Content-Type'] = 'application/json';
     body = JSON.stringify(body);
   }
