@@ -96,4 +96,35 @@ describe('Config validation', () => {
       /PORT must be a valid positive integer/i
     );
   });
+
+  it('validates INVITE_TTL_DAYS as integer between 1 and 365', () => {
+    assert.equal(
+      loadConfig({ ...validBaseEnv, INVITE_TTL_DAYS: '1' }).inviteTtlDays,
+      1
+    );
+    assert.equal(
+      loadConfig({ ...validBaseEnv, INVITE_TTL_DAYS: '365' }).inviteTtlDays,
+      365
+    );
+
+    for (const bad of ['0', '366', '-5', 'abc', '12.5']) {
+      assert.throws(
+        () => loadConfig({ ...validBaseEnv, INVITE_TTL_DAYS: bad }),
+        /INVITE_TTL_DAYS must be an integer between 1 and 365/i
+      );
+    }
+  });
+
+  it('loads and validates PUBLIC_BASE_URL', () => {
+    const cfg = loadConfig({
+      ...validBaseEnv,
+      PUBLIC_BASE_URL: 'https://monarch.example.com/',
+    });
+    assert.equal(cfg.publicBaseUrl, 'https://monarch.example.com');
+
+    assert.throws(
+      () => loadConfig({ ...validBaseEnv, PUBLIC_BASE_URL: 'not-a-valid-url' }),
+      /PUBLIC_BASE_URL must be a valid URL/i
+    );
+  });
 });

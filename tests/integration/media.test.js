@@ -645,6 +645,14 @@ describe('Media API, Storage, and Trigger Locking', () => {
     );
     assert.ok(fs.existsSync(tmpUploadDir));
 
+    // Confirm lifecycle: create a sample dir, verify removal
+    const sampleDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'monarch-media-cleanup-')
+    );
+    assert.ok(fs.existsSync(sampleDir));
+    fs.rmSync(sampleDir, { recursive: true, force: true });
+    assert.equal(fs.existsSync(sampleDir), false);
+
     // Confirm ./uploads in repo root does not contain test files
     const repoUploadsDir = path.resolve('./uploads');
     if (fs.existsSync(repoUploadsDir)) {
@@ -654,6 +662,8 @@ describe('Media API, Storage, and Trigger Locking', () => {
         0,
         'Expected repo ./uploads directory to remain empty during tests'
       );
+    } else {
+      assert.equal(fs.existsSync(repoUploadsDir), false);
     }
   });
 });

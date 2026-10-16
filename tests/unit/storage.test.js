@@ -103,5 +103,18 @@ describe('Local Storage', () => {
     assert.ok(fs.existsSync(testDir));
     fs.rmSync(testDir, { recursive: true, force: true });
     assert.equal(fs.existsSync(testDir), false);
+
+    // Confirm repo ./uploads remains untouched
+    const repoUploadsDir = path.resolve('./uploads');
+    if (fs.existsSync(repoUploadsDir)) {
+      const files = fs.readdirSync(repoUploadsDir);
+      assert.equal(
+        files.length,
+        0,
+        'Expected repo ./uploads directory to remain empty during tests'
+      );
+    } else {
+      assert.equal(fs.existsSync(repoUploadsDir), false);
+    }
   });
 });

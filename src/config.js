@@ -42,7 +42,29 @@ export function loadConfig(env = process.env) {
   const cookieSecure = env.COOKIE_SECURE === 'true';
   const uploadDir = env.UPLOAD_DIR || './uploads';
   const maxUploadMb = parseInt(env.MAX_UPLOAD_MB || '5', 10);
-  const inviteTtlDays = parseInt(env.INVITE_TTL_DAYS || '30', 10);
+  const inviteTtlDaysRaw = env.INVITE_TTL_DAYS || '30';
+  const inviteTtlDays = parseInt(inviteTtlDaysRaw, 10);
+  if (
+    Number.isNaN(inviteTtlDays) ||
+    !/^\d+$/.test(String(inviteTtlDaysRaw).trim()) ||
+    inviteTtlDays < 1 ||
+    inviteTtlDays > 365
+  ) {
+    throw new Error(
+      'Config validation error: INVITE_TTL_DAYS must be an integer between 1 and 365'
+    );
+  }
+
+  const publicBaseUrl = (
+    env.PUBLIC_BASE_URL || 'http://localhost:3000'
+  ).replace(/\/+$/, '');
+  try {
+    new URL(publicBaseUrl);
+  } catch {
+    throw new Error(
+      'Config validation error: PUBLIC_BASE_URL must be a valid URL'
+    );
+  }
 
   return {
     nodeEnv,
@@ -54,6 +76,7 @@ export function loadConfig(env = process.env) {
     uploadDir,
     maxUploadMb,
     inviteTtlDays,
+    publicBaseUrl,
   };
 }
 
