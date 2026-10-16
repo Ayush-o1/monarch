@@ -2,16 +2,32 @@ import express from 'express';
 import helmet from 'helmet';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import session from 'express-session';
+import connectPgSimple from 'connect-pg-simple';
+import config from './config.js';
 import { AppError } from './lib/errors.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { originCheck } from './middleware/originCheck.js';
 import { pool as defaultPool } from './db/pool.js';
+import { createAuthRouter } from './modules/auth/routes.js';
+
+const PgSession = connectPgSimple(session);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export function createApp({ pool = defaultPool } = {}) {
+export function createApp({
+  pool = defaultPool,
+  authLimiter,
+  sessionStore,
+  sessionSecret = config.sessionSecret,
+} = {}) {
   const app = express();
   const isProduction = process.env.NODE_ENV === 'production';
+
+  if (config.cookieSecure) {
+    app.set('trust proxy', 1);
+  }
 
   app.use(
     helmet({
@@ -36,6 +52,34 @@ export function createApp({ pool = defaultPool } = {}) {
 
   app.use(express.json({ limit: '100kb' }));
 
+  // Sessions with Postgres store
+  const store =
+    sessionStore ||
+    new PgSession({
+      pool,
+      tableName: 'session',
+      createTableIfMissing: false,
+    });
+
+  app.use(
+    session({
+      store,
+      name: 'monarch.sid',
+      secret: sessionSecret,
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: config.cookieSecure,
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      },
+    })
+  );
+
+  // CSRF defence for non-GET /api requests
+  app.use('/api', originCheck);
+
   app.use(express.static(path.join(__dirname, '../public')));
 
   app.get('/api/health', async (_req, res, next) => {
@@ -48,6 +92,9 @@ export function createApp({ pool = defaultPool } = {}) {
       );
     }
   });
+
+  // Auth routes
+  app.use(createAuthRouter({ rateLimiter: authLimiter }));
 
   app.all('/api/*', (req, _res, next) => {
     next(

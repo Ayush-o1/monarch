@@ -15,7 +15,7 @@
   - Enhanced health check running database query
   - Test database runner and tests
 
-- [ ] **Phase 2 — Authentication**
+- [x] **Phase 2 — Authentication**
   - Install `zod`, `bcryptjs`, `express-session`, `connect-pg-simple`, `express-rate-limit`
   - Auth module (register, login, logout, me) with bcrypt cost 12
   - Middleware: `requireUser`, `originCheck`, `rateLimits`, `validate`

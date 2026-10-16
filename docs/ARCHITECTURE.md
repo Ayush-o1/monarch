@@ -160,3 +160,10 @@ All errors follow:
 - `POST /api/landlord/:token/inspections/:id/request-changes`
 - `POST /api/landlord/:token/deductions`
 - `POST /api/landlord/:token/deductions/:id/withdraw`
+
+## 6. Security and Known Trade-offs
+
+- **Session Authentication**: Server-side sessions stored in PostgreSQL via `connect-pg-simple`, utilizing httpOnly, sameSite=lax cookies with 7-day expiration.
+- **CSRF Defense**: `originCheck` middleware verifies request `Origin` / `Referer` against the `Host` header on all state-changing API requests.
+- **Password Hashing**: Cost 12 bcryptjs. Login timing side-channel mitigation performs a dummy bcrypt compare when an email is not found.
+- **Accepted Trade-off**: Registration reveals whether an email already exists (returns 409 `EMAIL_TAKEN`), allowing an attacker to determine if an email is registered. This is an accepted trade-off to provide immediate feedback to the tenant during registration.
