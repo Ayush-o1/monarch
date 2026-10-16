@@ -103,7 +103,7 @@ export function createApp({
   app.use(createAuthRouter({ rateLimiter: authLimiter }));
 
   // Tenancies routes
-  app.use('/api/tenancies', createTenanciesRouter());
+  app.use('/api/tenancies', createTenanciesRouter({ pool }));
 
   // Inspections and items routes
   app.use(createItemsRouter({ pool, storage }));

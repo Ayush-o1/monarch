@@ -7,6 +7,8 @@ import {
   listTenancies,
   getTenancyById,
   getTenancyEvents,
+  createInvite,
+  revokeInvite,
 } from './service.js';
 import { AppError } from '../../lib/errors.js';
 
@@ -18,7 +20,7 @@ function validateTenancyId(req, _res, next) {
   next();
 }
 
-export function createTenanciesRouter() {
+export function createTenanciesRouter({ pool } = {}) {
   const router = express.Router();
 
   router.use(requireUser);
@@ -28,11 +30,14 @@ export function createTenanciesRouter() {
     validate({ body: createTenancySchema }),
     async (req, res, next) => {
       try {
-        const result = await createTenancy({
-          tenantId: req.session.user.id,
-          actorName: req.session.user.name,
-          ...req.body,
-        });
+        const result = await createTenancy(
+          {
+            tenantId: req.session.user.id,
+            actorName: req.session.user.name,
+            ...req.body,
+          },
+          { pool }
+        );
         res.status(201).json(result);
       } catch (err) {
         next(err);
@@ -42,7 +47,7 @@ export function createTenanciesRouter() {
 
   router.get('/', async (req, res, next) => {
     try {
-      const list = await listTenancies(req.session.user.id);
+      const list = await listTenancies(req.session.user.id, pool);
       res.status(200).json(list);
     } catch (err) {
       next(err);
@@ -51,7 +56,11 @@ export function createTenanciesRouter() {
 
   router.get('/:id', validateTenancyId, async (req, res, next) => {
     try {
-      const tenancy = await getTenancyById(req.params.id, req.session.user.id);
+      const tenancy = await getTenancyById(
+        req.params.id,
+        req.session.user.id,
+        pool
+      );
       res.status(200).json(tenancy);
     } catch (err) {
       next(err);
@@ -60,8 +69,36 @@ export function createTenanciesRouter() {
 
   router.get('/:id/events', validateTenancyId, async (req, res, next) => {
     try {
-      const events = await getTenancyEvents(req.params.id, req.session.user.id);
+      const events = await getTenancyEvents(
+        req.params.id,
+        req.session.user.id,
+        pool
+      );
       res.status(200).json(events);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/:id/invite', validateTenancyId, async (req, res, next) => {
+    try {
+      const result = await createInvite(req.params.id, req.session.user.id, {
+        pool,
+        actorName: req.session.user.name,
+      });
+      res.status(201).json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.delete('/:id/invite', validateTenancyId, async (req, res, next) => {
+    try {
+      await revokeInvite(req.params.id, req.session.user.id, {
+        pool,
+        actorName: req.session.user.name,
+      });
+      res.status(204).end();
     } catch (err) {
       next(err);
     }

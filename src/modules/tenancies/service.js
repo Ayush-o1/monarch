@@ -1,6 +1,8 @@
+import config from '../../config.js';
 import { pool as defaultPool } from '../../db/pool.js';
 import { recordEvent as defaultRecordEvent } from '../../lib/events.js';
 import { AppError } from '../../lib/errors.js';
+import { generateToken, hashToken } from '../../lib/tokens.js';
 
 export async function createTenancy(
   data,
@@ -128,17 +130,197 @@ export async function getTenancyById(id, tenantId, pool = defaultPool) {
     [id]
   );
 
+  function formatInspectionSummary(row) {
+    if (!row) return null;
+    return {
+      id: row.id,
+      type: row.type,
+      status: row.status,
+      submittedAt: row.submitted_at,
+      acknowledgedAt: row.acknowledged_at,
+      acknowledgedByName: row.acknowledged_by_name,
+      createdAt: row.created_at,
+      // Retain snake_case for backward compatibility
+      submitted_at: row.submitted_at,
+      acknowledged_at: row.acknowledged_at,
+      acknowledged_by_name: row.acknowledged_by_name,
+      created_at: row.created_at,
+    };
+  }
+
   const inspections = {
-    moveIn: inspectionsRes.rows.find((i) => i.type === 'move_in') || null,
-    moveOut: inspectionsRes.rows.find((i) => i.type === 'move_out') || null,
+    moveIn: formatInspectionSummary(
+      inspectionsRes.rows.find((i) => i.type === 'move_in')
+    ),
+    moveOut: formatInspectionSummary(
+      inspectionsRes.rows.find((i) => i.type === 'move_out')
+    ),
   };
+
+  const inviteRes = await pool.query(
+    `SELECT expires_at, last_used_at, revoked_at
+     FROM invites
+     WHERE tenancy_id = $1 AND revoked_at IS NULL
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [id]
+  );
+
+  let invite = { active: false, expiresAt: null, lastUsedAt: null };
+  if (inviteRes.rowCount > 0) {
+    const row = inviteRes.rows[0];
+    const isExpired = new Date(row.expires_at) <= new Date();
+    invite = {
+      active: !isExpired,
+      expiresAt: row.expires_at,
+      lastUsedAt: row.last_used_at,
+    };
+  }
 
   return {
     ...tenancy,
     deposit_paise: Number(tenancy.deposit_paise),
     inspections,
-    invite: null,
+    invite,
   };
+}
+
+export async function createInvite(
+  tenancyId,
+  tenantId,
+  {
+    pool = defaultPool,
+    recordEventFn = defaultRecordEvent,
+    actorName = 'Tenant',
+    publicBaseUrl = config.publicBaseUrl,
+    inviteTtlDays = config.inviteTtlDays,
+  } = {}
+) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // 1. Lock tenancy row FOR UPDATE, verifying ownership
+    const tenancyRes = await client.query(
+      `SELECT id FROM tenancies WHERE id = $1 AND tenant_id = $2 FOR UPDATE`,
+      [tenancyId, tenantId]
+    );
+
+    if (tenancyRes.rowCount === 0) {
+      throw new AppError(404, 'NOT_FOUND', 'Tenancy not found');
+    }
+
+    // 2. Revoke any active invite; record invite_revoked only if one was revoked
+    const revokeRes = await client.query(
+      `UPDATE invites
+       SET revoked_at = now()
+       WHERE tenancy_id = $1 AND revoked_at IS NULL
+       RETURNING id`,
+      [tenancyId]
+    );
+
+    if (revokeRes.rowCount > 0) {
+      await recordEventFn(client, {
+        tenancyId,
+        actorType: 'tenant',
+        actorLabel: actorName,
+        type: 'invite_revoked',
+        payload: {},
+      });
+    }
+
+    // 3. Generate raw token and hash. Raw token exists only in the response.
+    const token = generateToken();
+    const tokenHash = hashToken(token);
+    const ttlDays = inviteTtlDays || 30;
+
+    const insertRes = await client.query(
+      `INSERT INTO invites (tenancy_id, token_hash, expires_at)
+       VALUES ($1, $2, now() + ($3 * interval '1 day'))
+       RETURNING expires_at`,
+      [tenancyId, tokenHash, ttlDays]
+    );
+
+    const expiresAt = insertRes.rows[0].expires_at;
+
+    // 4. Record invite_created event
+    await recordEventFn(client, {
+      tenancyId,
+      actorType: 'tenant',
+      actorLabel: actorName,
+      type: 'invite_created',
+      payload: { expiresAt },
+    });
+
+    await client.query('COMMIT');
+
+    const baseUrl = (publicBaseUrl || 'http://localhost:3000').replace(
+      /\/+$/,
+      ''
+    );
+
+    return {
+      url: `${baseUrl}/l/${token}`,
+      expiresAt,
+    };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export async function revokeInvite(
+  tenancyId,
+  tenantId,
+  {
+    pool = defaultPool,
+    recordEventFn = defaultRecordEvent,
+    actorName = 'Tenant',
+  } = {}
+) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const tenancyRes = await client.query(
+      `SELECT id FROM tenancies WHERE id = $1 AND tenant_id = $2 FOR UPDATE`,
+      [tenancyId, tenantId]
+    );
+
+    if (tenancyRes.rowCount === 0) {
+      throw new AppError(404, 'NOT_FOUND', 'Tenancy not found');
+    }
+
+    const revokeRes = await client.query(
+      `UPDATE invites
+       SET revoked_at = now()
+       WHERE tenancy_id = $1 AND revoked_at IS NULL
+       RETURNING id`,
+      [tenancyId]
+    );
+
+    if (revokeRes.rowCount > 0) {
+      await recordEventFn(client, {
+        tenancyId,
+        actorType: 'tenant',
+        actorLabel: actorName,
+        type: 'invite_revoked',
+        payload: {},
+      });
+    }
+
+    await client.query('COMMIT');
+    return { success: true };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 export async function getTenancyEvents(id, tenantId, pool = defaultPool) {
