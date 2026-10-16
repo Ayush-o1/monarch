@@ -60,11 +60,123 @@ function renderEventItem(ev) {
     if (ev.payload.leaseStartDate) {
       parts.push(`Lease Start: ${ev.payload.leaseStartDate}`);
     }
+    if (ev.type === 'inspection_submitted') {
+      parts.push(
+        `${ev.payload.itemCount || 0} items, ${ev.payload.photoCount || 0} photos`
+      );
+      if (ev.payload.itemsWithoutPhotos > 0) {
+        parts.push(`${ev.payload.itemsWithoutPhotos} without photos`);
+      }
+    }
+    if (ev.type === 'changes_requested' && ev.payload.note) {
+      parts.push(`"${ev.payload.note}"`);
+    }
+    if (ev.type === 'inspection_acknowledged') {
+      parts.push('Inspection acknowledged and locked');
+    }
+    if (ev.type === 'invite_created' && ev.payload.expiresAt) {
+      parts.push(
+        `Active until ${new Date(ev.payload.expiresAt).toLocaleDateString()}`
+      );
+    }
+    if (ev.type === 'invite_revoked') {
+      parts.push('Link revoked');
+    }
     details.textContent = parts.join(' • ');
     item.appendChild(details);
   }
 
   return item;
+}
+
+function setupInspectionCard(cardActionEl, inspection, tenancyId, reloadFn) {
+  if (!cardActionEl) return;
+  cardActionEl.textContent = '';
+
+  if (!inspection) {
+    const p = document.createElement('p');
+    p.style.fontSize = '0.875rem';
+    p.style.color = 'var(--text-muted)';
+    p.textContent = 'Move-out comparison arrives in Phase 7.';
+    cardActionEl.appendChild(p);
+    return;
+  }
+
+  const container = document.createElement('div');
+  container.style.display = 'flex';
+  container.style.gap = '0.75rem';
+  container.style.alignItems = 'center';
+  container.style.flexWrap = 'wrap';
+
+  const link = document.createElement('a');
+  link.href = `/inspection.html?id=${encodeURIComponent(inspection.id)}`;
+  link.textContent =
+    inspection.status === 'draft' ? 'Open editor →' : 'View inspection →';
+  link.className = 'btn btn-secondary';
+  link.style.width = 'auto';
+  link.style.textDecoration = 'none';
+  container.appendChild(link);
+
+  if (inspection.status === 'draft') {
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'button';
+    submitBtn.className = 'btn';
+    submitBtn.style.width = 'auto';
+    submitBtn.textContent = 'Submit for review';
+
+    submitBtn.addEventListener('click', async () => {
+      submitBtn.disabled = true;
+      try {
+        const insp = await apiRequest(
+          `/api/inspections/${encodeURIComponent(inspection.id)}`
+        );
+        const items = insp.items || [];
+        if (items.length === 0) {
+          alert(
+            'Cannot submit: inspection has no items. Add items in the editor first.'
+          );
+          submitBtn.disabled = false;
+          return;
+        }
+
+        const missingCondition = items.filter((it) => !it.condition);
+        if (missingCondition.length > 0) {
+          alert(
+            `Cannot submit: ${missingCondition.length} item(s) are missing a condition in the editor.`
+          );
+          submitBtn.disabled = false;
+          return;
+        }
+
+        const itemsWithoutPhotos = items.filter(
+          (it) => !it.media || it.media.length === 0
+        ).length;
+        const msg =
+          itemsWithoutPhotos > 0
+            ? `Submit inspection for landlord review? ${itemsWithoutPhotos} item(s) have no photo.`
+            : 'Submit inspection for landlord review?';
+
+        if (!confirm(msg)) {
+          submitBtn.disabled = false;
+          return;
+        }
+
+        await apiRequest(
+          `/api/inspections/${encodeURIComponent(inspection.id)}/submit`,
+          { method: 'POST' }
+        );
+        await reloadFn();
+      } catch (err) {
+        alert(err.message || 'Failed to submit inspection');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    container.appendChild(submitBtn);
+  }
+
+  cardActionEl.appendChild(container);
 }
 
 async function loadTenancy() {
@@ -117,16 +229,12 @@ async function loadTenancy() {
         'move-in-status',
         tenancy.inspections.moveIn.status.toUpperCase()
       );
-      if (moveInAction) {
-        moveInAction.textContent = '';
-        const link = document.createElement('a');
-        link.href = `/inspection.html?id=${encodeURIComponent(tenancy.inspections.moveIn.id)}`;
-        link.textContent =
-          tenancy.inspections.moveIn.status === 'draft'
-            ? 'Open editor →'
-            : 'View inspection →';
-        moveInAction.appendChild(link);
-      }
+      setupInspectionCard(
+        moveInAction,
+        tenancy.inspections.moveIn,
+        tenancyId,
+        loadTenancy
+      );
     } else {
       setText('move-in-status', 'NOT STARTED');
     }
@@ -137,26 +245,110 @@ async function loadTenancy() {
         'move-out-status',
         tenancy.inspections.moveOut.status.toUpperCase()
       );
-      if (moveOutAction) {
-        moveOutAction.textContent = '';
-        const link = document.createElement('a');
-        link.href = `/inspection.html?id=${encodeURIComponent(tenancy.inspections.moveOut.id)}`;
-        link.textContent =
-          tenancy.inspections.moveOut.status === 'draft'
-            ? 'Open editor →'
-            : 'View inspection →';
-        moveOutAction.appendChild(link);
-      }
+      setupInspectionCard(
+        moveOutAction,
+        tenancy.inspections.moveOut,
+        tenancyId,
+        loadTenancy
+      );
     } else {
       setText('move-out-status', 'NOT STARTED');
-      if (moveOutAction) {
-        moveOutAction.textContent = '';
-        const p = document.createElement('p');
-        p.style.fontSize = '0.875rem';
-        p.style.color = 'var(--text-muted)';
-        p.textContent = 'Move-out comparison arrives in Phase 7.';
-        moveOutAction.appendChild(p);
-      }
+      setupInspectionCard(moveOutAction, null, tenancyId, loadTenancy);
+    }
+
+    // Share with landlord section
+    const newLinkContainer = document.getElementById('new-link-container');
+    const newLinkInput = document.getElementById('new-link-input');
+    const newLinkExpiry = document.getElementById('new-link-expiry');
+    const copyLinkBtn = document.getElementById('copy-link-btn');
+    const createLinkBtn = document.getElementById('create-link-btn');
+    const revokeLinkBtn = document.getElementById('revoke-link-btn');
+
+    if (tenancy.invite && tenancy.invite.active) {
+      const expDate = tenancy.invite.expiresAt
+        ? new Date(tenancy.invite.expiresAt).toLocaleDateString()
+        : 'unknown';
+      const lastOpened = tenancy.invite.lastUsedAt
+        ? new Date(tenancy.invite.lastUsedAt).toLocaleString()
+        : 'never';
+      setText(
+        'share-status-text',
+        `Link active until ${expDate}, last opened ${lastOpened}`
+      );
+      if (createLinkBtn) createLinkBtn.textContent = 'Replace Link';
+      if (revokeLinkBtn) revokeLinkBtn.style.display = 'inline-block';
+    } else {
+      setText('share-status-text', 'No active link');
+      if (createLinkBtn) createLinkBtn.textContent = 'Create Review Link';
+      if (revokeLinkBtn) revokeLinkBtn.style.display = 'none';
+    }
+
+    if (createLinkBtn) {
+      createLinkBtn.onclick = async () => {
+        createLinkBtn.disabled = true;
+        try {
+          const res = await apiRequest(
+            `/api/tenancies/${encodeURIComponent(tenancyId)}/invite`,
+            { method: 'POST' }
+          );
+          if (newLinkInput && newLinkExpiry && newLinkContainer) {
+            newLinkInput.value = res.url;
+            newLinkExpiry.textContent = new Date(
+              res.expiresAt
+            ).toLocaleDateString();
+            newLinkContainer.style.display = 'block';
+          }
+          await loadTenancy();
+        } catch (err) {
+          alert(err.message || 'Failed to create review link');
+        } finally {
+          createLinkBtn.disabled = false;
+        }
+      };
+    }
+
+    if (revokeLinkBtn) {
+      revokeLinkBtn.onclick = async () => {
+        if (
+          !confirm(
+            'Are you sure you want to revoke the review link? The landlord will no longer be able to access it.'
+          )
+        ) {
+          return;
+        }
+        revokeLinkBtn.disabled = true;
+        try {
+          await apiRequest(
+            `/api/tenancies/${encodeURIComponent(tenancyId)}/invite`,
+            { method: 'DELETE' }
+          );
+          if (newLinkContainer) newLinkContainer.style.display = 'none';
+          await loadTenancy();
+        } catch (err) {
+          alert(err.message || 'Failed to revoke review link');
+        } finally {
+          revokeLinkBtn.disabled = false;
+        }
+      };
+    }
+
+    if (copyLinkBtn && newLinkInput) {
+      copyLinkBtn.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(newLinkInput.value);
+          copyLinkBtn.textContent = 'Copied!';
+          setTimeout(() => {
+            copyLinkBtn.textContent = 'Copy';
+          }, 2000);
+        } catch {
+          newLinkInput.select();
+          document.execCommand('copy');
+          copyLinkBtn.textContent = 'Copied!';
+          setTimeout(() => {
+            copyLinkBtn.textContent = 'Copy';
+          }, 2000);
+        }
+      };
     }
 
     // Timeline events
