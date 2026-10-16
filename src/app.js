@@ -10,6 +10,7 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { originCheck } from './middleware/originCheck.js';
 import { pool as defaultPool } from './db/pool.js';
 import { createAuthRouter } from './modules/auth/routes.js';
+import { createTenanciesRouter } from './modules/tenancies/routes.js';
 
 const PgSession = connectPgSimple(session);
 
@@ -95,6 +96,9 @@ export function createApp({
 
   // Auth routes
   app.use(createAuthRouter({ rateLimiter: authLimiter }));
+
+  // Tenancies routes
+  app.use('/api/tenancies', createTenanciesRouter());
 
   app.all('/api/*', (req, _res, next) => {
     next(

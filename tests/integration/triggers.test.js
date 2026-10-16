@@ -1,0 +1,149 @@
+import { describe, it, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import { pool, ensureTestDb } from '../helpers/db.js';
+
+describe('Database Triggers and Invariants', () => {
+  let userId;
+  let tenancyId;
+  let inspectionId;
+  let eventId;
+
+  before(async () => {
+    await ensureTestDb();
+
+    // Create isolated user, tenancy, inspection, and event for trigger tests
+    userId = crypto.randomUUID();
+    tenancyId = crypto.randomUUID();
+    inspectionId = crypto.randomUUID();
+
+    await pool.query(
+      `INSERT INTO users (id, name, email, password_hash)
+       VALUES ($1, 'Trigger Tester', $2, 'hash')`,
+      [userId, `trigger_${Date.now()}@example.com`]
+    );
+
+    await pool.query(
+      `INSERT INTO tenancies (id, tenant_id, property_label, deposit_paise)
+       VALUES ($1, $2, 'Trigger Flat', 5000000)`,
+      [tenancyId, userId]
+    );
+
+    await pool.query(
+      `INSERT INTO inspections (id, tenancy_id, type, status)
+       VALUES ($1, $2, 'move_in', 'draft')`,
+      [inspectionId, tenancyId]
+    );
+
+    const evRes = await pool.query(
+      `INSERT INTO events (tenancy_id, actor_type, actor_label, type, payload)
+       VALUES ($1, 'tenant', 'Trigger Tester', 'test_event', '{}'::jsonb)
+       RETURNING id`,
+      [tenancyId]
+    );
+    eventId = evRes.rows[0].id;
+  });
+
+  after(async () => {
+    await pool.end();
+  });
+
+  it('UPDATE on events table fails with "events are append-only"', async () => {
+    await assert.rejects(async () => {
+      await pool.query(
+        `UPDATE events SET actor_label = 'Hacked' WHERE id = $1`,
+        [eventId]
+      );
+    }, /events are append-only/i);
+  });
+
+  it('DELETE on events table fails with "events are append-only"', async () => {
+    await assert.rejects(async () => {
+      await pool.query(`DELETE FROM events WHERE id = $1`, [eventId]);
+    }, /events are append-only/i);
+  });
+
+  it('TRUNCATE on events table fails with "events are append-only"', async () => {
+    await assert.rejects(async () => {
+      await pool.query(`TRUNCATE events`);
+    }, /events are append-only/i);
+  });
+
+  it('changing inspection type fails because type is immutable', async () => {
+    await assert.rejects(async () => {
+      await pool.query(
+        `UPDATE inspections SET type = 'move_out' WHERE id = $1`,
+        [inspectionId]
+      );
+    }, /inspections type and tenancy_id are immutable/i);
+  });
+
+  it('changing inspection tenancy_id fails because tenancy_id is immutable', async () => {
+    const anotherTenancyId = crypto.randomUUID();
+    await assert.rejects(async () => {
+      await pool.query(`UPDATE inspections SET tenancy_id = $1 WHERE id = $2`, [
+        anotherTenancyId,
+        inspectionId,
+      ]);
+    }, /inspections type and tenancy_id are immutable/i);
+  });
+
+  it('illegal inspection transition draft -> acknowledged fails', async () => {
+    await assert.rejects(async () => {
+      await pool.query(
+        `UPDATE inspections SET status = 'acknowledged' WHERE id = $1`,
+        [inspectionId]
+      );
+    }, /illegal inspection status transition from draft to acknowledged/i);
+  });
+
+  it('legal transitions draft -> submitted -> draft succeed', async () => {
+    // 1. draft -> submitted
+    const subRes = await pool.query(
+      `UPDATE inspections SET status = 'submitted' WHERE id = $1 RETURNING status`,
+      [inspectionId]
+    );
+    assert.equal(subRes.rows[0].status, 'submitted');
+
+    // 2. submitted -> draft (change requested)
+    const draftRes = await pool.query(
+      `UPDATE inspections SET status = 'draft' WHERE id = $1 RETURNING status`,
+      [inspectionId]
+    );
+    assert.equal(draftRes.rows[0].status, 'draft');
+
+    // 3. no-op update (draft -> draft) succeeds
+    const sameRes = await pool.query(
+      `UPDATE inspections SET status = 'draft' WHERE id = $1 RETURNING status`,
+      [inspectionId]
+    );
+    assert.equal(sameRes.rows[0].status, 'draft');
+  });
+
+  it('transition from acknowledged to draft fails (acknowledged is terminal)', async () => {
+    const terminalId = crypto.randomUUID();
+    await pool.query(
+      `INSERT INTO inspections (id, tenancy_id, type, status)
+       VALUES ($1, $2, 'move_out', 'draft')`,
+      [terminalId, tenancyId]
+    );
+
+    // draft -> submitted -> acknowledged
+    await pool.query(
+      `UPDATE inspections SET status = 'submitted' WHERE id = $1`,
+      [terminalId]
+    );
+    await pool.query(
+      `UPDATE inspections SET status = 'acknowledged' WHERE id = $1`,
+      [terminalId]
+    );
+
+    // acknowledged -> draft must fail
+    await assert.rejects(async () => {
+      await pool.query(
+        `UPDATE inspections SET status = 'draft' WHERE id = $1`,
+        [terminalId]
+      );
+    }, /illegal inspection status transition from acknowledged to draft/i);
+  });
+});

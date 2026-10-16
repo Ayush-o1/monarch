@@ -21,7 +21,7 @@
   - Middleware: `requireUser`, `originCheck`, `rateLimits`, `validate`
   - Frontend auth pages (`register.html`, `login.html`), `api.js`, `ui.js`
 
-- [ ] **Phase 3 — Tenancies, timeline, dashboard**
+- [x] **Phase 3 — Tenancies, timeline, dashboard**
   - Migration `003_tenancies_inspections_events.sql` (tenancies, inspections with `inspections_guard`, events with append-only triggers)
   - Event recording helper (`lib/events.js`)
   - Tenancy creation (atomic creation of tenancy + move-in inspection draft + event)

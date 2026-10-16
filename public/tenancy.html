@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tenancy Details — Handover</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+          "
+        >
+          <h1>Handover</h1>
+          <p><a href="/tenancies.html">← All Tenancies</a></p>
+        </div>
+      </header>
+      <main>
+        <div id="general-error" class="alert error" role="alert"></div>
+        <p id="loading-state">Loading tenancy record...</p>
+
+        <div id="tenancy-content" style="display: none">
+          <section style="margin-bottom: 2rem">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                margin-bottom: 0.5rem;
+              "
+            >
+              <h2 id="property-label" style="margin-bottom: 0"></h2>
+              <span
+                id="tenancy-status"
+                class="badge"
+                style="
+                  padding: 0.25rem 0.65rem;
+                  border-radius: 4px;
+                  font-size: 0.85rem;
+                  font-weight: 600;
+                  background: #e5e7eb;
+                  color: #374151;
+                "
+              ></span>
+            </div>
+            <div
+              id="tenancy-details"
+              style="
+                font-size: 0.95rem;
+                line-height: 1.6;
+                color: var(--text-color);
+              "
+            >
+              <p><strong>Deposit:</strong> <span id="deposit-amount"></span></p>
+              <p id="address-row" style="display: none">
+                <strong>Address:</strong> <span id="address-val"></span>
+              </p>
+              <p id="landlord-row" style="display: none">
+                <strong>Landlord:</strong> <span id="landlord-val"></span>
+              </p>
+              <p id="refund-row" style="display: none">
+                <strong>Agreed Refund Window:</strong>
+                <span id="refund-val"></span>
+              </p>
+              <p id="lease-row" style="display: none">
+                <strong>Lease Start:</strong> <span id="lease-val"></span>
+              </p>
+            </div>
+          </section>
+
+          <section style="margin-bottom: 2.5rem">
+            <h3 style="margin-bottom: 1rem">Inspections</h3>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 1rem;
+              "
+            >
+              <div
+                id="move-in-card"
+                class="card"
+                style="
+                  border: 1px solid var(--border-color);
+                  border-radius: 6px;
+                  padding: 1rem;
+                "
+              >
+                <h4 style="margin-bottom: 0.5rem">Move-in Inspection</h4>
+                <p>Status: <strong id="move-in-status"></strong></p>
+                <div id="move-in-action" style="margin-top: 0.75rem">
+                  <p style="font-size: 0.875rem; color: var(--text-muted)">
+                    Inspection editing arrives in Phase 4.
+                  </p>
+                </div>
+              </div>
+              <div
+                id="move-out-card"
+                class="card"
+                style="
+                  border: 1px solid var(--border-color);
+                  border-radius: 6px;
+                  padding: 1rem;
+                "
+              >
+                <h4 style="margin-bottom: 0.5rem">Move-out Inspection</h4>
+                <p>Status: <strong id="move-out-status">Not started</strong></p>
+                <div id="move-out-action" style="margin-top: 0.75rem">
+                  <p style="font-size: 0.875rem; color: var(--text-muted)">
+                    Move-out comparison arrives in Phase 7.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section style="margin-bottom: 2rem">
+            <h3 style="margin-bottom: 1rem">Timeline (Append-Only Record)</h3>
+            <div
+              id="timeline-list"
+              style="
+                border-left: 2px solid var(--border-color);
+                padding-left: 1.25rem;
+                margin-left: 0.5rem;
+              "
+            ></div>
+            <div id="empty-timeline" style="display: none">
+              <p style="color: var(--text-muted)">No events recorded yet.</p>
+            </div>
+          </section>
+        </div>
+      </main>
+      <footer>
+        <p>
+          Handover records what the parties entered and acknowledged. It is not
+          legal advice.
+        </p>
+      </footer>
+    </div>
+    <script type="module" src="/js/pages/tenancy.js"></script>
+  </body>
+</html>
