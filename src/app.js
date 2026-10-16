@@ -11,6 +11,7 @@ import { originCheck } from './middleware/originCheck.js';
 import { pool as defaultPool } from './db/pool.js';
 import { createAuthRouter } from './modules/auth/routes.js';
 import { createTenanciesRouter } from './modules/tenancies/routes.js';
+import { createItemsRouter } from './modules/items/routes.js';
 
 const PgSession = connectPgSimple(session);
 
@@ -99,6 +100,9 @@ export function createApp({
 
   // Tenancies routes
   app.use('/api/tenancies', createTenanciesRouter());
+
+  // Inspections and items routes
+  app.use(createItemsRouter());
 
   app.all('/api/*', (req, _res, next) => {
     next(

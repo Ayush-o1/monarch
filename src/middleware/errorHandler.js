@@ -11,11 +11,33 @@ export function errorHandler(err, req, res, _next) {
     });
   }
 
-  if (err.message && err.message.startsWith('LOCKED:')) {
+  // Postgres PL/pgSQL trigger lock exception
+  if (
+    err.message &&
+    (err.message.startsWith('LOCKED:') || err.message.includes('LOCKED:'))
+  ) {
+    const cleanMsg = err.message.replace(/^.*LOCKED:\s*/, '');
     return res.status(409).json({
       error: {
         code: 'INSPECTION_LOCKED',
-        message: err.message.replace(/^LOCKED:\s*/, ''),
+        message: cleanMsg,
+        details: {},
+      },
+    });
+  }
+
+  // Postgres unique violation on inspection items
+  if (
+    err.code === '23505' &&
+    (err.constraint ===
+      'inspection_items_inspection_id_lower_room_lower_name_idx' ||
+      (err.message && err.message.includes('inspection_items')))
+  ) {
+    return res.status(409).json({
+      error: {
+        code: 'DUPLICATE_ITEM',
+        message:
+          'An item with this room and name already exists in this inspection',
         details: {},
       },
     });
