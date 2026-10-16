@@ -39,7 +39,9 @@
             <div id="email-error" class="field-error"></div>
           </div>
           <div class="form-group">
-            <label for="password">Password (minimum 10 characters)</label>
+            <label for="password"
+              >Password (at least 10 characters, up to 72 bytes)</label
+            >
             <input
               type="password"
               id="password"
@@ -47,7 +49,6 @@
               autocomplete="new-password"
               required
               minlength="10"
-              maxlength="128"
             />
             <div id="password-error" class="field-error"></div>
           </div>

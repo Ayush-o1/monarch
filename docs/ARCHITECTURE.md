@@ -165,5 +165,5 @@ All errors follow:
 
 - **Session Authentication**: Server-side sessions stored in PostgreSQL via `connect-pg-simple`, utilizing httpOnly, sameSite=lax cookies with 7-day expiration.
 - **CSRF Defense**: `originCheck` middleware verifies request `Origin` / `Referer` against the `Host` header on all state-changing API requests.
-- **Password Hashing**: Cost 12 bcryptjs. Login timing side-channel mitigation performs a dummy bcrypt compare when an email is not found.
+- **Password Hashing**: Cost 12 bcryptjs. Enforces minimum 10 characters and maximum 72 bytes (the bcrypt truncation boundary). Login timing side-channel mitigation performs a dummy bcrypt compare when an email is not found.
 - **Accepted Trade-off**: Registration reveals whether an email already exists (returns 409 `EMAIL_TAKEN`), allowing an attacker to determine if an email is registered. This is an accepted trade-off to provide immediate feedback to the tenant during registration.

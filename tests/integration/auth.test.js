@@ -53,6 +53,43 @@ describe('Authentication and Sessions', () => {
     assert.match(res.body.error.details.password, /at least 10/i);
   });
 
+  it('password exceeding 72 bytes returns 400 with field details', async () => {
+    const password73 = 'a'.repeat(73);
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Long Pass', email: randomEmail(), password: password73 })
+      .expect(400);
+
+    assert.equal(res.body.error.code, 'VALIDATION_ERROR');
+    assert.match(res.body.error.details.password, /72 bytes/i);
+  });
+
+  it('password of exactly 72 bytes registers successfully', async () => {
+    const password72 = 'b'.repeat(72);
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Exact 72', email: randomEmail(), password: password72 })
+      .expect(201);
+
+    assert.equal(res.body.name, 'Exact 72');
+  });
+
+  it('multi-byte password (25 emoji) exceeding 72 bytes returns 400', async () => {
+    // 25 emoji characters (each 4 bytes = 100 bytes)
+    const emojiPassword = '😀'.repeat(25);
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({
+        name: 'Emoji User',
+        email: randomEmail(),
+        password: emojiPassword,
+      })
+      .expect(400);
+
+    assert.equal(res.body.error.code, 'VALIDATION_ERROR');
+    assert.match(res.body.error.details.password, /72 bytes/i);
+  });
+
   it('duplicate email in different letter case returns 409 EMAIL_TAKEN', async () => {
     const base = `dup_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const emailUpper = `${base}@EXAMPLE.COM`;

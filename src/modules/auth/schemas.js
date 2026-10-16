@@ -16,7 +16,9 @@ export const registerSchema = z.object({
   password: z
     .string({ required_error: 'Password is required' })
     .min(10, 'Password must be at least 10 characters')
-    .max(128, 'Password must be at most 128 characters'),
+    .refine((val) => Buffer.byteLength(val, 'utf8') <= 72, {
+      message: 'Password must be at most 72 bytes',
+    }),
 });
 
 export const loginSchema = z.object({
