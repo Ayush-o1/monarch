@@ -734,6 +734,20 @@ describe('Move-out Lifecycle, Comparison Engine, and Landlord Review (Phase 7)',
         return true;
       }
     );
+
+    // Verify comparison is STILL accessible to both tenant and landlord after acknowledgement
+    const compAfterAck = await agent
+      .get(`/api/tenancies/${tenancyId}/comparison`)
+      .expect(200);
+    assert.equal(compAfterAck.body.moveOutInspection.status, 'acknowledged');
+
+    const landlordCompAfterAck = await request(app)
+      .get(`/api/landlord/${token}/comparison`)
+      .expect(200);
+    assert.equal(
+      landlordCompAfterAck.body.moveOutInspection.status,
+      'acknowledged'
+    );
   });
 
   it('request-changes on move-out returns 409 INVALID_STATE', async () => {
@@ -793,5 +807,47 @@ describe('Move-out Lifecycle, Comparison Engine, and Landlord Review (Phase 7)',
     );
     assert.equal(res404.headers['cache-control'], 'no-store');
     assert.equal(res404.headers['referrer-policy'], 'no-referrer');
+
+    // Test expired token handling on comparison endpoint
+    const { agent } = await createRegisteredAgent('Expired Comp Tester');
+    const { tenancyId, moveInId } = await setupActiveTenancyWithMoveIn(agent);
+    await agent.post(`/api/inspections/${moveInId}/submit`).expect(200);
+    const startRes = await agent
+      .post(`/api/tenancies/${tenancyId}/move-out`)
+      .expect(201);
+    const moveOutId = startRes.body.inspection.id;
+
+    const inspRes = await agent
+      .get(`/api/inspections/${moveOutId}`)
+      .expect(200);
+    for (const it of inspRes.body.items) {
+      await agent
+        .patch(`/api/items/${it.id}`)
+        .send({ condition: 'good' })
+        .expect(200);
+    }
+    await agent.post(`/api/inspections/${moveOutId}/submit`).expect(200);
+
+    const inviteRes = await agent
+      .post(`/api/tenancies/${tenancyId}/invite`)
+      .expect(201);
+    const token = inviteRes.body.url.split('/l/')[1];
+
+    await pool.query(
+      `UPDATE invites SET expires_at = now() - interval '1 hour' WHERE tenancy_id = $1`,
+      [tenancyId]
+    );
+
+    const res410 = await request(app)
+      .get(`/api/landlord/${token}/comparison`)
+      .expect(410);
+    assert.equal(res410.body.error.code, 'LINK_EXPIRED');
+    assert.equal(
+      JSON.stringify(res410.body).includes(token),
+      false,
+      'Expired error body must NOT echo the token'
+    );
+    assert.equal(res410.headers['cache-control'], 'no-store');
+    assert.equal(res410.headers['referrer-policy'], 'no-referrer');
   });
 });

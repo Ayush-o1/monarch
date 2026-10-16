@@ -54,11 +54,11 @@ export function compareInspections(moveInItems = [], moveOutItems = []) {
 
     if (inItem && outItem) {
       const inRank =
-        inItem.condition in CONDITION_RANKS
+        inItem.condition && Object.hasOwn(CONDITION_RANKS, inItem.condition)
           ? CONDITION_RANKS[inItem.condition]
           : null;
       const outRank =
-        outItem.condition in CONDITION_RANKS
+        outItem.condition && Object.hasOwn(CONDITION_RANKS, outItem.condition)
           ? CONDITION_RANKS[outItem.condition]
           : null;
 

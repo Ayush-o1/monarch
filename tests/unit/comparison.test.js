@@ -168,6 +168,9 @@ describe('Comparison Engine (pure logic)', () => {
 
     const res = compareInspections(moveIn, moveOut);
 
+    assert.equal(res.summary.total, 5);
+    assert.equal(res.summary.added, 1);
+    assert.equal(res.summary.missing, 1);
     assert.equal(res.summary.totalMoveIn, 4);
     assert.equal(res.summary.totalMoveOut, 4);
     assert.equal(res.summary.worse, 1); // Sink: good -> damaged
@@ -200,5 +203,20 @@ describe('Comparison Engine (pure logic)', () => {
 
     assert.equal(res.items[4].room, 'Living Room');
     assert.equal(res.items[4].outcome, 'same');
+  });
+
+  it('handles empty inspections and prototype property condition names safely', () => {
+    const emptyRes = compareInspections();
+    assert.equal(emptyRes.summary.total, 0);
+    assert.equal(emptyRes.items.length, 0);
+
+    const protoItemIn = [
+      { id: '1', room: 'Hall', name: 'Key', condition: 'toString' },
+    ];
+    const protoItemOut = [
+      { id: '2', room: 'Hall', name: 'Key', condition: 'toString' },
+    ];
+    const protoRes = compareInspections(protoItemIn, protoItemOut);
+    assert.equal(protoRes.items[0].outcome, 'same');
   });
 });
