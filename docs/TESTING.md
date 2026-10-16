@@ -130,3 +130,33 @@ _Note: Tests isolate themselves by creating unique users with random emails. Do 
     2. Click "Revoke Link"; observe link status updating to "No active link".
   - **Window B (Landlord)**:
     1. Reload page; confirm 410 "This link has expired or was replaced".
+
+### Phase 7 Checklist (Move-out and Comparison)
+
+- [ ] Move-out start requirements:
+  - Tenancy must be active and move-in inspection submitted or acknowledged.
+  - Calling before move-in is submitted returns 409 INVALID_STATE.
+  - Clones move-in items with blank condition and note; 0 media rows copied.
+  - Updates tenancy status to `move_out` and records `move_out_started` event.
+  - Exactly one move-out inspection allowed per tenancy.
+- [ ] Move-out submission:
+  - Tenancy must be in `move_out` status.
+  - Requires >= 1 item and condition assigned on every item.
+  - Submitting transitions tenancy status to `settling` and records `inspection_submitted` event.
+  - Permanently locks move-out inspection items and media from mutation.
+- [ ] Comparison availability & privacy:
+  - Unavailable (409 INVALID_STATE) while move-out is in draft for both tenant and landlord.
+  - Draft move-out inspection is invisible to landlord.
+  - Tenant comparison available at `/compare.html?id=<tenancyId>`.
+  - Landlord comparison available at `/l/:token/compare`.
+  - Landlord responses strictly omit tenant email, user id, password hashes, and tokens.
+  - Both `/api/landlord/:token/comparison` and `/l/:token/compare` set `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
+- [ ] Landlord move-out review:
+  - Move-out inspection displayed with room-grouped items, conditions, notes, and photos.
+  - Landlord can acknowledge move-out, permanently locking the record.
+  - Requesting changes on move-out returns 409 INVALID_STATE.
+- [ ] Comparison page features:
+  - Side-by-side comparison of move-in and move-out conditions and photos.
+  - Visual indicators for outcomes: worse, same, better, added at move-out, not in move-out.
+  - Summary metric cards for total, worse, same, better, added, missing items.
+  - Photo thumbnail strip with lightbox full-size viewer.

@@ -46,11 +46,13 @@
   - Landlord token endpoints and read-only review view (`landlord.html`)
   - Acknowledge and request-changes actions
 
-- [ ] **Phase 7 — Move-out and comparison**
-  - Move-out start endpoint (cloning items without conditions/photos, atomic state transition)
-  - Comparison pure logic (`lib/comparison.js`)
-  - Move-out submission moving tenancy to `settling`
-  - Comparison view (`compare.html`) for tenant and landlord
+- [x] **Phase 7 — Move-out and comparison**
+  - Move-out start endpoint `POST /api/tenancies/:id/move-out` (cloning items without conditions/notes/photos, atomic transition to `move_out`, event `move_out_started`)
+  - Comparison pure logic (`src/lib/comparison.js`) with outcomes: `worse`, `same`, `better`, `new_at_move_out`, `not_in_move_out`
+  - Move-out inspection submission atomically transitioning tenancy to `settling`
+  - Tenant comparison endpoint `GET /api/tenancies/:id/comparison`
+  - Landlord comparison endpoint `GET /api/landlord/:token/comparison` with `Cache-Control: no-store` and `Referrer-Policy: no-referrer`
+  - Dual-mode comparison view (`compare.html`, `public/js/pages/compare.js`) supporting tenant and landlord (`/l/:token/compare`)
 
 - [ ] **Phase 8 — Deductions, settlement, close**
   - Migration `007_deduction_lines.sql`

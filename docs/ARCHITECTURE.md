@@ -116,15 +116,37 @@ monarch/
 - **Move-in Actions**:
   - **Acknowledge**: Single conditional update setting `status='acknowledged'`, `acknowledged_at=now()`, `acknowledged_by_name=$name WHERE id=$1 AND tenancy_id=$2 AND status='submitted'`. Permanently locks the inspection. Records `inspection_acknowledged` event with actor type `landlord`.
   - **Request Changes**: Allowed only for `move_in` while tenancy is `active`. Single conditional update setting `status='draft'`, `submitted_at=NULL WHERE id=$1 AND tenancy_id=$2 AND status='submitted'`. Records `changes_requested` event with `{ inspectionId, note }`. Returns inspection to draft, enabling the tenant to see the note, edit items/photos, and resubmit.
-- **Move-out Actions**: Acknowledge only. Disagreements handled via deduction lines.
+- **Move-out Actions**: Acknowledge only (permanently locks the inspection). Request changes on move-out is strictly prohibited and returns 409 `INVALID_STATE`. Disagreements are handled via deduction proposals in Phase 8.
 - **Concurrency**: Handled by database conditional updates (`WHERE status='submitted'`), ensuring exactly one action succeeds and subsequent or racing actions receive 409 `INVALID_STATE`.
 
-### Comparison Engine
+### Move-out Inspection and Comparison Lifecycle (Phase 7)
 
-- Pure function in `lib/comparison.js`.
-- Key: `lower(trim(room))|lower(trim(name))`.
-- Condition ranks: good (3) > minor_wear (2) > damaged (1) > missing (0).
-- Outcomes: `worse`, `same`, `better`, `new_at_move_out`, `not_in_move_out`.
+- **Starting Move-out (`POST /api/tenancies/:id/move-out`)**:
+  - Requires tenancy in `active` status and move-in inspection in `submitted` or `acknowledged` status.
+  - Locks the tenancy row `FOR UPDATE` within a transaction to serialize concurrent start requests.
+  - Clones all move-in items, preserving `room`, `name`, and `position` while resetting `condition` and `note` to `NULL`.
+  - Does NOT copy any media rows or photo files.
+  - Updates tenancy status to `move_out`.
+  - Appends audit event `move_out_started` with payload `{ inspectionId, itemCount }` and actor type `tenant`.
+- **Submitting Move-out (`POST /api/inspections/:id/submit`)**:
+  - Requires inspection in `draft` status and parent tenancy in `move_out` status.
+  - Locks inspection and tenancy rows within transaction (`FOR UPDATE OF i, t`).
+  - Requires at least 1 item and an assigned condition on every item.
+  - Atomically sets inspection status to `submitted`, sets `submitted_at = now()`, transitions tenancy status to `settling`, and records `inspection_submitted` audit event.
+- **Comparison Engine (`src/lib/comparison.js`)**:
+  - Pure function `compareInspections(moveInItems, moveOutItems)`.
+  - Normalized matching key: `lower(trim(room)) + "|" + lower(trim(name))`.
+  - Condition ranks: `good` (3) > `minor_wear` (2) > `damaged` (1) > `missing` (0).
+  - Outcomes: `worse`, `same`, `better`, `new_at_move_out`, `not_in_move_out`.
+  - Summary metrics: `total`, `worse`, `same`, `better`, `added`, `missing`.
+- **Comparison Endpoints & Authorization**:
+  - Tenant: `GET /api/tenancies/:id/comparison` (authenticated session, verifies tenancy ownership).
+  - Landlord: `GET /api/landlord/:token/comparison` (invite token authentication; returns `Cache-Control: no-store` and `Referrer-Policy: no-referrer`).
+  - **Availability Rule**: Both endpoints return 409 `INVALID_STATE` while move-out is in draft. The comparison becomes available only once move-out is `submitted` or `acknowledged`.
+  - **Privacy Guarantee**: Landlord responses strictly omit tenant email, tenant user IDs, password hashes, and tokens.
+- **Comparison URLs**:
+  - Tenant: `/compare.html?id=<tenancyId>`
+  - Landlord: `/l/:token/compare` (emits `Cache-Control: no-store` and `Referrer-Policy: no-referrer`)
 
 ### Deductions and Settlement
 
