@@ -9,8 +9,6 @@ pg.types.setTypeParser(pg.types.builtins.INT8, (val) => {
 export function createPool(connectionString = config.databaseUrl) {
   return new pg.Pool({
     connectionString,
-    max: 10,
-    idleTimeoutMillis: 1000,
   });
 }
 
