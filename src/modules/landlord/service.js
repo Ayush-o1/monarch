@@ -5,6 +5,7 @@ import { AppError } from '../../lib/errors.js';
 import { hashToken } from '../../lib/tokens.js';
 import { compareInspections } from '../../lib/comparison.js';
 import { fetchInspectionItemsWithMedia } from '../tenancies/service.js';
+import { getSettlementData } from '../deductions/service.js';
 
 export async function validateAndGetInvite(token, pool = defaultPool) {
   const tokenHash = hashToken(token);
@@ -132,6 +133,8 @@ export async function getLandlordTenancy(tenancyId, pool = defaultPool) {
     }
   }
 
+  const settlementData = await getSettlementData(tenancyId, pool);
+
   return {
     tenancy: {
       propertyLabel: t.property_label,
@@ -152,6 +155,9 @@ export async function getLandlordTenancy(tenancyId, pool = defaultPool) {
       acknowledgedByName: i.acknowledged_by_name,
       items: itemsByInspection.get(i.id) || [],
     })),
+    settlement: settlementData.settlement,
+    deductionLines: settlementData.lines,
+    moveOutItems: settlementData.moveOutItems,
   };
 }
 

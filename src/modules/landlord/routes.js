@@ -8,6 +8,11 @@ import { landlordRateLimiter as defaultLandlordLimiter } from '../../middleware/
 import { validate } from '../../middleware/validate.js';
 import { acknowledgeSchema, requestChangesSchema } from './schemas.js';
 import {
+  proposeDeductionSchema,
+  withdrawDeductionSchema,
+} from '../deductions/schemas.js';
+import { proposeDeduction, withdrawDeduction } from '../deductions/service.js';
+import {
   validateAndGetInvite,
   getLandlordTenancy,
   getLandlordMediaStream,
@@ -148,6 +153,50 @@ export function createLandlordRouter({
           { pool }
         );
         res.status(200).json({ inspection });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  // POST /api/landlord/:token/deductions
+  router.post(
+    '/api/landlord/:token/deductions',
+    landlordTokenMiddleware,
+    validate({ body: proposeDeductionSchema }),
+    async (req, res, next) => {
+      try {
+        const line = await proposeDeduction(
+          req.landlord.tenancyId,
+          req.body,
+          pool
+        );
+        res.status(201).json({ line });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  // POST /api/landlord/:token/deductions/:id/withdraw
+  router.post(
+    '/api/landlord/:token/deductions/:id/withdraw',
+    landlordTokenMiddleware,
+    validate({ body: withdrawDeductionSchema }),
+    async (req, res, next) => {
+      const idParse = uuidParamSchema.safeParse(req.params.id);
+      if (!idParse.success) {
+        return next(new AppError(404, 'NOT_FOUND', 'Deduction line not found'));
+      }
+
+      try {
+        const line = await withdrawDeduction(
+          req.params.id,
+          req.landlord.tenancyId,
+          req.body,
+          pool
+        );
+        res.status(200).json({ line });
       } catch (err) {
         next(err);
       }

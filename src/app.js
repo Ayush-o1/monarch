@@ -14,6 +14,7 @@ import { createTenanciesRouter } from './modules/tenancies/routes.js';
 import { createItemsRouter } from './modules/items/routes.js';
 import { createMediaRouter } from './modules/media/routes.js';
 import { createLandlordRouter } from './modules/landlord/routes.js';
+import { createDeductionsRouter } from './modules/deductions/routes.js';
 
 const PgSession = connectPgSimple(session);
 
@@ -119,6 +120,9 @@ export function createApp({
       maxUploadMb,
     })
   );
+
+  // Deductions routes
+  app.use('/api/deductions', createDeductionsRouter({ pool }));
 
   // Landlord token API routes
   app.use(
