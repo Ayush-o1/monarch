@@ -1,6 +1,7 @@
 import { apiRequest } from '../api.js';
 import { formatPaise } from '../money.js';
 import { setText, showMessage } from '../ui.js';
+import { formatEventDetails } from '../eventFormatting.js';
 
 const urlParams = new URLSearchParams(window.location.search);
 const tenancyId = urlParams.get('id');
@@ -42,79 +43,15 @@ function renderEventItem(ev) {
   item.appendChild(header);
 
   if (ev.payload && Object.keys(ev.payload).length > 0) {
-    const details = document.createElement('p');
-    details.style.margin = '0.25rem 0 0 0';
-    details.style.fontSize = '0.875rem';
-    details.style.color = 'var(--text-color)';
-
-    const parts = [];
-    if (ev.payload.depositPaise) {
-      parts.push(`Deposit: ${formatPaise(ev.payload.depositPaise)}`);
+    const text = formatEventDetails(ev, formatPaise);
+    if (text) {
+      const details = document.createElement('p');
+      details.style.margin = '0.25rem 0 0 0';
+      details.style.fontSize = '0.875rem';
+      details.style.color = 'var(--text-color)';
+      details.textContent = text;
+      item.appendChild(details);
     }
-    if (ev.payload.propertyLabel) {
-      parts.push(`Property: ${ev.payload.propertyLabel}`);
-    }
-    if (ev.payload.refundWindowDays) {
-      parts.push(`Refund Window: ${ev.payload.refundWindowDays} days`);
-    }
-    if (ev.payload.leaseStartDate) {
-      parts.push(`Lease Start: ${ev.payload.leaseStartDate}`);
-    }
-    if (ev.type === 'inspection_submitted') {
-      parts.push(
-        `${ev.payload.itemCount || 0} items, ${ev.payload.photoCount || 0} photos`
-      );
-      if (ev.payload.itemsWithoutPhotos > 0) {
-        parts.push(`${ev.payload.itemsWithoutPhotos} without photos`);
-      }
-    }
-    if (ev.type === 'changes_requested' && ev.payload.note) {
-      parts.push(`"${ev.payload.note}"`);
-    }
-    if (ev.type === 'inspection_acknowledged') {
-      parts.push('Inspection acknowledged and locked');
-    }
-    if (ev.type === 'move_out_started') {
-      parts.push(
-        `Move-out inspection started (${ev.payload.itemCount || 0} items cloned)`
-      );
-    }
-    if (ev.type === 'invite_created' && ev.payload.expiresAt) {
-      parts.push(
-        `Active until ${new Date(ev.payload.expiresAt).toLocaleDateString()}`
-      );
-    }
-    if (ev.type === 'invite_revoked') {
-      parts.push('Link revoked');
-    }
-    if (ev.type === 'deduction_proposed' && ev.payload.amountPaise) {
-      parts.push(`Proposed deduction: ${formatPaise(ev.payload.amountPaise)}`);
-    }
-    if (ev.type === 'deduction_accepted') {
-      parts.push(
-        ev.payload.note
-          ? `Deduction accepted: "${ev.payload.note}"`
-          : 'Deduction accepted'
-      );
-    }
-    if (ev.type === 'deduction_disputed') {
-      parts.push(`Deduction disputed: "${ev.payload.note}"`);
-    }
-    if (ev.type === 'deduction_withdrawn') {
-      parts.push('Deduction withdrawn');
-    }
-    if (ev.type === 'tenancy_closed') {
-      const closeParts = [
-        `Accepted: ${formatPaise(ev.payload.acceptedPaise || 0)}`,
-        `Unclaimed: ${formatPaise(ev.payload.unclaimedPaise || 0)}`,
-      ];
-      if (ev.payload.unresolvedAcknowledged) {
-        closeParts.push('unresolved acknowledged');
-      }
-      parts.push(`Tenancy closed (${closeParts.join(', ')})`);
-    }
-    details.textContent = parts.join(' • ');
-    item.appendChild(details);
   }
 
   return item;
@@ -381,6 +318,11 @@ async function loadTenancy() {
       setText('lease-val', tenancy.lease_start_date);
       const row = document.getElementById('lease-row');
       if (row) row.style.display = 'block';
+    }
+
+    const downloadPdfLink = document.getElementById('download-pdf-link');
+    if (downloadPdfLink && tenancyId) {
+      downloadPdfLink.href = `/api/tenancies/${encodeURIComponent(tenancyId)}/report.pdf`;
     }
 
     // Inspections
