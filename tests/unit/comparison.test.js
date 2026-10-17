@@ -13,6 +13,16 @@ describe('Comparison Engine (pure logic)', () => {
       'living room|main door'
     );
     assert.equal(normalizeKey('BEDROOM', '  Wardrobe '), 'bedroom|wardrobe');
+    assert.equal(
+      normalizeKey('\tKitchen \n', '\r\nRefrigerator\t'),
+      'kitchen|refrigerator'
+    );
+    assert.equal(normalizeKey(null, undefined), '|');
+    assert.equal(normalizeKey('', ''), '|');
+    assert.equal(
+      normalizeKey(' Balcony ', ' Light Fixture '),
+      'balcony|light fixture'
+    );
   });
 
   it('matches items regardless of letter case or surrounding whitespace', () => {

@@ -343,6 +343,13 @@ describe('Move-out Lifecycle, Comparison Engine, and Landlord Review (Phase 7)',
         .expect(200);
     }
 
+    // Upload 1 photo to the first cloned move-out item
+    const imgBuf = await makeValidJpeg();
+    await agent
+      .post(`/api/items/${inspRes.body.items[0].id}/media`)
+      .attach('photo', imgBuf, 'moveout.jpg')
+      .expect(201);
+
     // Submit move-out
     const submitRes = await agent
       .post(`/api/inspections/${moveOutId}/submit`)
@@ -350,6 +357,7 @@ describe('Move-out Lifecycle, Comparison Engine, and Landlord Review (Phase 7)',
 
     assert.equal(submitRes.body.inspection.status, 'submitted');
     assert.ok(submitRes.body.inspection.submitted_at);
+    assert.equal(submitRes.body.warnings.itemsWithoutPhotos, 1);
 
     // Verify tenancy is now in settling status
     const tenancyRes = await agent
@@ -357,7 +365,7 @@ describe('Move-out Lifecycle, Comparison Engine, and Landlord Review (Phase 7)',
       .expect(200);
     assert.equal(tenancyRes.body.status, 'settling');
 
-    // Verify inspection_submitted event
+    // Verify inspection_submitted event in timeline via API
     const eventsRes = await agent
       .get(`/api/tenancies/${tenancyId}/events`)
       .expect(200);
@@ -365,7 +373,25 @@ describe('Move-out Lifecycle, Comparison Engine, and Landlord Review (Phase 7)',
       (e) => e.type === 'inspection_submitted' && e.payload.type === 'move_out'
     );
     assert.ok(submitEvent);
+    assert.equal(submitEvent.actor_type, 'tenant');
+    assert.equal(submitEvent.payload.inspectionId, moveOutId);
+    assert.equal(submitEvent.payload.type, 'move_out');
     assert.equal(submitEvent.payload.itemCount, 2);
+    assert.equal(submitEvent.payload.photoCount, 1);
+    assert.equal(submitEvent.payload.itemsWithoutPhotos, 1);
+
+    // Verify persisted event in database
+    const dbEventRes = await pool.query(
+      `SELECT * FROM events WHERE tenancy_id = $1 AND type = 'inspection_submitted' AND payload->>'type' = 'move_out'`,
+      [tenancyId]
+    );
+    assert.equal(dbEventRes.rowCount, 1);
+    const dbPayload = dbEventRes.rows[0].payload;
+    assert.equal(dbPayload.inspectionId, moveOutId);
+    assert.equal(dbPayload.type, 'move_out');
+    assert.equal(dbPayload.itemCount, 2);
+    assert.equal(dbPayload.photoCount, 1);
+    assert.equal(dbPayload.itemsWithoutPhotos, 1);
   });
 
   it('concurrent move-out submission: exactly one succeeds, second gets 409 INSPECTION_NOT_DRAFT', async () => {
