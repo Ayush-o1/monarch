@@ -54,13 +54,14 @@
   - Landlord comparison endpoint `GET /api/landlord/:token/comparison` with `Cache-Control: no-store` and `Referrer-Policy: no-referrer`
   - Dual-mode comparison view (`compare.html`, `public/js/pages/compare.js`) supporting tenant and landlord (`/l/:token/compare`)
 
-- [ ] **Phase 8 — Deductions, settlement, close**
-  - Migration `007_deduction_lines.sql`
+- [x] **Phase 8 — Deductions, settlement, close**
+  - Migration `007_deduction_lines.sql` (immutable fields trigger, cap guard trigger, status transitions)
+  - Pure settlement maths engine (`src/lib/settlement.js`) and unit test suite
   - Deduction proposals by landlord linked to move-out items, capped at deposit
-  - Tenant accept/dispute actions and landlord withdraw action
-  - Settlement summary computation
+  - Tenant accept/dispute conditional updates and landlord withdrawal
+  - Pure comparison item linkage (`linkedChange` and photo thumbnails)
   - Tenancy closing with unresolved deductions acknowledgement
-  - Settlement page (`settlement.html`)
+  - Dual UI: Tenant settlement page (`settlement.html`) and Landlord deduction management (`landlord.html`)
 
 - [ ] **Phase 9 — PDF report**
   - Install `pdfkit`

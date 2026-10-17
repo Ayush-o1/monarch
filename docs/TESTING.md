@@ -160,3 +160,103 @@ _Note: Tests isolate themselves by creating unique users with random emails. Do 
   - Visual indicators for outcomes: worse, same, better, added at move-out, not in move-out.
   - Summary metric cards for total, worse, same, better, added, missing items.
   - Photo thumbnail strip with lightbox full-size viewer.
+
+### Phase 8 Two-Window Manual Checklist (Deductions, Settlement, Close)
+
+Follow this step-by-step procedure using two browser windows (Window A for Tenant, Window B for Landlord) to verify the end-to-end settlement lifecycle.
+
+#### 1. Preflight and Setup
+
+- **Window A (Tenant)**:
+  1. Log in and navigate to an active tenancy.
+  2. Complete and submit the move-in inspection; in Window B acknowledge it.
+  3. Start the move-out inspection, fill in conditions/photos, and submit it.
+  4. Tenancy status transitions to `settling`.
+  5. In tenancy details, confirm the new card "Deposit Settlement & Deductions" appears with button "View Settlement →".
+
+#### 2. Tenant Settlement Initial State
+
+- **Window A (Tenant)**:
+  1. Click "View Settlement →" (`/settlement.html?id=<tenancyId>`).
+  2. Verify totals panel:
+     - Total Deposit matches tenancy deposit.
+     - Accepted: ₹0.00.
+     - Awaiting Response: ₹0.00.
+     - Disputed: ₹0.00.
+     - Unclaimed Deposit: ₹<full deposit>.
+  3. Verify timeline info displays days since move-out and agreed refund window with neutral, informative wording.
+  4. Verify empty state displays "No deductions proposed yet."
+
+#### 3. Landlord Deduction Proposals & Cap Enforcements
+
+- **Window B (Landlord)**:
+  1. Open `/l/:token`. Scroll to "Deposit Settlement Summary" and "Propose a Deduction".
+  2. Verify move-out item select dropdown lists all move-out items with their change badges (e.g. `Condition worse at move-out`, `No change recorded`), plus "Not linked to an item".
+  3. **Test Cap Enforcement**:
+     - Enter an amount larger than the deposit (e.g. ₹999,999).
+     - Click "Propose Deduction".
+     - Observe error message stating the deposit is exceeded and showing the maximum remaining rupee amount.
+     - Confirm form was disabled while submitting and re-enabled after error.
+  4. **Propose Valid Linked Line**:
+     - Select a move-out item (e.g. Fridge).
+     - Enter Description: "Fridge shelf crack repair".
+     - Enter Amount: `1500.00`.
+     - Click "Propose Deduction".
+     - Confirm line appears in list as "Awaiting response", linked to the item, and totals update.
+  5. **Propose Unlinked Line**:
+     - Select "Not linked to an item".
+     - Enter Description: "Lost keys replacement".
+     - Enter Amount: `500.00`.
+     - Click "Propose Deduction".
+     - Confirm line appears as "Not linked to an item".
+
+#### 4. Tenant Responses (Accept & Dispute)
+
+- **Window A (Tenant)**:
+  1. Refresh `/settlement.html?id=<tenancyId>`.
+  2. Observe both proposed lines with correct amounts and status "Awaiting response".
+  3. For the linked line, verify move-in and move-out photo thumbnails are shown.
+  4. Click a photo thumbnail; confirm the lightbox modal displays the full photo.
+  5. **Accept Deduction**:
+     - Click "Accept Deduction" on Line 1. Confirm the dialog prompt.
+     - Observe line status updates to "Accepted".
+     - Verify totals panel: Accepted = ₹1,500.00; Unclaimed decreased by ₹1,500.00.
+  6. **Dispute Deduction**:
+     - On Line 2, click "Dispute".
+     - Verify note field appears.
+     - Enter note: "Keys were returned in the mailbox on move-out day."
+     - Click "Submit Dispute".
+     - Observe line status updates to "Disputed" with the tenant note displayed.
+     - Verify totals panel: Disputed = ₹500.00; Awaiting Response = ₹0.00.
+
+#### 5. Landlord Withdrawal
+
+- **Window B (Landlord)**:
+  1. Refresh `/l/:token`.
+  2. Observe Line 1 shows "Accepted" (Withdraw button is not available).
+  3. Observe Line 2 shows "Disputed" with the tenant note and a "Withdraw Deduction" button.
+  4. Click "Withdraw Deduction" on Line 2; confirm the prompt.
+  5. Observe Line 2 updates to "Withdrawn".
+  6. Confirm totals panel updates: Disputed returns to ₹0.00, and the ₹500.00 is returned to Unclaimed Deposit.
+
+#### 6. Tenancy Closure & Finalization
+
+- **Window B (Landlord)**:
+  1. Propose one more line for ₹200.00 ("Minor cleaning fee") to leave an unresolved line.
+- **Window A (Tenant)**:
+  1. Refresh `/settlement.html?id=<tenancyId>`.
+  2. Click "Close Tenancy".
+  3. Verify confirm modal opens and states: "There are 1 unresolved deduction line(s) (1 awaiting response, 0 disputed)."
+  4. Verify the "Confirm Close" button is disabled until the acknowledgment checkbox is ticked.
+  5. Tick "[x] I acknowledge that there are 1 unresolved deduction(s) and wish to close the tenancy."
+  6. Click "Confirm Close".
+  7. Tenancy status updates to `CLOSED`.
+  8. Observe the page enters read-only mode: "Close Tenancy" section is hidden, and no Accept/Dispute action buttons are visible.
+- **Window B (Landlord)**:
+  1. Refresh `/l/:token`.
+  2. Observe Propose Deduction form is hidden.
+  3. Tenancy status displays `CLOSED`.
+  4. Verify calling propose or withdraw APIs returns 409 `TENANCY_CLOSED`.
+- **Window A (Tenant)**:
+  1. Navigate back to `/tenancy.html?id=<tenancyId>`.
+  2. Review the Timeline: confirm `deduction_proposed`, `deduction_accepted`, `deduction_disputed`, `deduction_withdrawn`, and `tenancy_closed` events are rendered in chronological order with plain, informative wording.

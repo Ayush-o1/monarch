@@ -70,7 +70,9 @@ monarch/
 6. **media**: `id uuid pk default gen_random_uuid()`, `item_id uuid not null references inspection_items(id) on delete cascade`, `storage_key text not null unique`, `sha256 char(64) not null`, `mime text not null check (mime = 'image/jpeg')`, `size_bytes integer not null check (size_bytes > 0)`, `uploaded_at timestamptz not null default now()`. `UNIQUE (item_id, sha256)`. Index on `item_id`. Max 8 photos per item.
    - Trigger `require_draft_media`: reads parent item's inspection `FOR SHARE`; raises `LOCKED:` if status != 'draft'; `item_id` is immutable; allows foreign-key cascade when parent item is deleted in draft status.
 7. **invites**: `id uuid pk default gen_random_uuid()`, `tenancy_id uuid not null references tenancies(id)`, `token_hash char(64) not null unique`, `expires_at timestamptz not null`, `revoked_at timestamptz null`, `last_used_at timestamptz null`, `created_at timestamptz not null default now()`. Partial unique index on `(tenancy_id) WHERE revoked_at IS NULL`. Index on `tenancy_id`.
-8. **deduction_lines**: `id`, `tenancy_id`, `item_id -> inspection_items` (nullable; must belong to move-out inspection), `description (1..300)`, `amount_paise (CHECK > 0)`, `status CHECK in ('proposed','accepted','disputed','withdrawn') default 'proposed'`, `tenant_note (<=500, null ok)`, `created_by_name`, `created_at`, `responded_at`, `updated_at`. Index on `(tenancy_id)`.
+8. **deduction_lines**: `id uuid pk default gen_random_uuid()`, `tenancy_id uuid not null references tenancies(id)`, `item_id uuid null references inspection_items(id)`, `description varchar(300) not null check (char_length(btrim(description)) between 1 and 300)`, `amount_paise bigint not null check (amount_paise > 0 and amount_paise <= 1000000000)`, `status varchar(20) not null default 'proposed' check in ('proposed','accepted','disputed','withdrawn')`, `tenant_note varchar(500) null`, `created_by_name varchar(80) not null`, `created_at, updated_at timestamptz not null default now()`, `responded_at timestamptz null`. Indexes on `tenancy_id` and `item_id`. No `ON DELETE CASCADE`.
+   - Trigger `deduction_lines_guard`: BEFORE UPDATE on `deduction_lines`. Enforces immutability of `tenancy_id`, `item_id`, `amount_paise`, `description`, `created_by_name`, and `created_at`. Enforces legal status transitions: proposed->accepted, proposed->disputed, proposed->withdrawn, disputed->accepted, disputed->withdrawn. `accepted` and `withdrawn` are terminal. Same-status update allowed only if nothing changed except `updated_at`. Raises error starting with `ILLEGAL:` mapping to 409 `INVALID_STATE`.
+   - Trigger `deduction_cap_guard`: BEFORE INSERT OR UPDATE on `deduction_lines`. Locks tenancy row `FOR UPDATE`, sums non-withdrawn lines (excluding current row on update), and raises an exception starting with `CAP:` mapping to 422 `DEDUCTIONS_EXCEED_DEPOSIT` if non-withdrawn total exceeds tenancy deposit.
 9. **events (append-only)**: `id bigint identity`, `tenancy_id -> tenancies` (no cascade), `actor_type CHECK in ('tenant','landlord','system')`, `actor_label`, `type`, `payload jsonb default '{}'`, `created_at`.
    - Triggers: UPDATE, DELETE, and TRUNCATE raise an exception. Index on `(tenancy_id, id)`.
 
@@ -148,15 +150,67 @@ monarch/
   - Tenant: `/compare.html?id=<tenancyId>`
   - Landlord: `/l/:token/compare` (emits `Cache-Control: no-store` and `Referrer-Policy: no-referrer`)
 
-### Deductions and Settlement
+### Deductions, Settlement, and Close (Phase 8)
 
-- Propose allowed only while tenancy is `settling`.
-- Total proposed + accepted + disputed cannot exceed `deposit_paise`.
-- Status transitions:
-  - Tenant: proposed -> accepted, proposed -> disputed, disputed -> accepted.
-  - Landlord: proposed -> withdrawn, disputed -> withdrawn.
-  - Accepted is final.
-- Close: Allowed in `settling`. If unresolved lines exist, tenant must confirm `acknowledgeUnresolved: true`. Closes tenancy; rejects future deduction changes.
+- **Proposing Deductions (`POST /api/landlord/:token/deductions`)**:
+  - Requires the tenancy to be in `settling` status (returns 409 `INVALID_STATE` if active/move_out, or 409 `TENANCY_CLOSED` if closed).
+  - Serialized via row-level lock on the tenancy row (`FOR UPDATE`).
+  - Inputs validated: `name` (1..80 trimmed), `description` (1..300 trimmed), `amountPaise` (integer 1..1,000,000,000; decimals and strings rejected with 400).
+  - Optional `itemId`: if provided, must belong to THIS tenancy's `move_out` inspection (validated via a single joined query; invalid or foreign tenancy items return 422 `INVALID_ITEM`).
+  - **Deposit Cap Enforcement**:
+    - Service check: sums existing non-withdrawn lines + new line amount; if greater than `deposit_paise`, returns 422 `DEDUCTIONS_EXCEED_DEPOSIT` with details `{ depositPaise, claimedPaise, remainingPaise }`. Exact deposit claim is permitted; one paisa over is rejected.
+    - Database trigger backstop: `deduction_cap_guard` ensures even direct concurrent inserts cannot exceed deposit.
+  - Records audit event `deduction_proposed` with actor `landlord` and payload `{ lineId, itemId, amountPaise }`.
+
+- **Responding to Deductions (`PATCH /api/deductions/:id`)**:
+  - Tenant session authentication required; scoped to tenancy owned by session user (returns 404 otherwise).
+  - Tenancy must be in `settling` status (returns 409 `TENANCY_CLOSED` if closed).
+  - Actions:
+    - `accept`: conditional update `WHERE status IN ('proposed', 'disputed')`. Note is optional. Sets `responded_at = now()`. Records `deduction_accepted` event.
+    - `dispute`: conditional update `WHERE status = 'proposed'`. Note is required (1..500 characters). Sets `responded_at = now()`. Records `deduction_disputed` event.
+  - Zero rows updated returns 409 `INVALID_STATE`.
+  - Database trigger `deduction_lines_guard` backstops transition legality.
+
+- **Withdrawing Deductions (`POST /api/landlord/:token/deductions/:id/withdraw`)**:
+  - Landlord token authentication; line must belong to token's tenancy (returns 404 otherwise).
+  - Tenancy must be in `settling` status (returns 409 `TENANCY_CLOSED` if closed).
+  - Conditional update `WHERE status IN ('proposed', 'disputed')`.
+  - Zero rows updated returns 409 `INVALID_STATE`.
+  - Withdrawing frees up the line amount against the deposit cap.
+  - Records audit event `deduction_withdrawn`.
+
+- **"Lines Are Never Edited" Decision**:
+  - Deduction lines are immutable once created: `amount_paise`, `description`, `tenancy_id`, `item_id`, `created_by_name`, and `created_at` cannot be updated (enforced by `deduction_lines_guard` trigger).
+  - **Rationale**: If a party could edit the description or amount of a proposed or disputed line, it would invalidate prior acceptance or dispute context, creating ambiguity and opportunities for fraud. To change an amount, the landlord must withdraw the existing line and propose a new line. This guarantees an unambiguous, chronological audit trail in `events`.
+
+- **Pure Settlement Calculation (`src/lib/settlement.js`)**:
+  - Pure function `computeSettlement({ depositPaise, lines, moveOutSubmittedAt, refundWindowDays, now })`.
+  - Formula:
+    - `acceptedPaise = sum(lines WHERE status = 'accepted')`
+    - `proposedPaise = sum(lines WHERE status = 'proposed')`
+    - `disputedPaise = sum(lines WHERE status = 'disputed')`
+    - `unclaimedPaise = depositPaise - acceptedPaise - proposedPaise - disputedPaise`
+    - Withdrawn lines are strictly excluded from all financial sums.
+    - `daysSinceMoveOut` = whole calendar days between move-out inspection `submitted_at` and `now`.
+    - `windowRemainingDays = refundWindowDays - daysSinceMoveOut` (null if no window configured; negative if past window).
+  - Summary counts per status: `totalCount`, `proposedCount`, `acceptedCount`, `disputedCount`, `withdrawnCount`.
+
+- **Tenancy Closure (`POST /api/tenancies/:id/close`)**:
+  - Requires session user owning the tenancy.
+  - Locks tenancy row `FOR UPDATE`. Tenancy status must be `settling` (returns 409 `INVALID_STATE` otherwise).
+  - If any line is `proposed` or `disputed` and `acknowledgeUnresolved` is not true, returns 422 `UNRESOLVED_DEDUCTIONS` with `{ proposedCount, disputedCount }`.
+  - When confirmed, sets `status = 'closed'`, `closed_at = now()`, `updated_at = now()`.
+  - Records audit event `tenancy_closed` with payload `{ acceptedPaise, proposedPaise, disputedPaise, unclaimedPaise, unresolvedAcknowledged }`.
+  - **Serialisation Guarantee**: Because propose, respond, withdraw, and close all lock the tenancy row `FOR UPDATE`, racing requests are strictly serialized: either a proposal exists before close totals are computed, or the propose is rejected with 409 `TENANCY_CLOSED`.
+
+- **Item Comparison Linkage in Settlement**:
+  - Reuses Phase 7 `compareInspections` engine to assign `linkedChange` for linked items:
+    - `worse`: "Condition worse at move-out"
+    - `new_at_move_out`: "New item at move-out"
+    - `same`: "No change recorded"
+    - `better`: "Better at move-out"
+    - `not_linked`: when `itemId` is null
+  - Includes media IDs for thumbnails of move-in and move-out conditions.
 
 ## 5. API Contract Summary
 
@@ -218,4 +272,5 @@ All errors follow:
 - **Accepted Trade-off**: Registration reveals whether an email already exists (returns 409 `EMAIL_TAKEN`), allowing an attacker to determine if an email is registered. This is an accepted trade-off to provide immediate feedback to the tenant during registration.
 - **Media Privacy & Authenticated Serving**: All EXIF and GPS geolocation metadata are stripped during Sharp image re-encoding. Media files are stored using server-generated keys and never served directly as public static assets; access is strictly mediated through authenticated routes (`GET /api/media/:id`), ensuring complete tenant tenancy isolation and IDOR prevention.
 - **Known Trade-off (Landlord Link Access)**: Anyone with the link can act as the landlord. This avoids requiring landlord account registration or app installation. Mitigated by: (1) cryptographically secure 256-bit random tokens (43 base64url characters); (2) storing only the SHA-256 hash in the database; (3) automatic expiration (`INVITE_TTL_DAYS`); (4) instant revocation by the tenant via UI or API; (5) single active link invariant enforced by a partial unique index; (6) rate limiting (60 req/min per IP); (7) strict `no-store` cache control and `no-referrer` policies; and (8) complete omission of tenant email and user IDs from landlord payloads.
-- **Known Limits (Trigger Security)**: The table owner (the app role in development) can disable triggers, so the append-only and lock triggers stop mistakes and application bugs, not a privileged database attacker; Phase 10 will separate migration (DDL) and app runtime (DML) roles.
+- **Known Limits (Trigger Security)**: The table owner (the app role in development) can disable triggers, so the append-only and lock triggers stop mistakes, application bugs, and race conditions, not a privileged database attacker with direct DDL access; Phase 10 will separate migration (DDL) and app runtime (DML) roles.
+- **Legal Status of Accept**: Acceptance of a deduction within Handover records mutual agreement between the parties within the application workflow. It does not constitute a certified digital signature (such as eSign) or legal court judgment; it serves as contemporary documentary evidence of agreement.
