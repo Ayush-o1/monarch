@@ -26,6 +26,36 @@ export function errorHandler(err, req, res, _next) {
     });
   }
 
+  // Postgres PL/pgSQL deduction cap exception
+  if (
+    err.message &&
+    (err.message.startsWith('CAP:') || err.message.includes('CAP:'))
+  ) {
+    const cleanMsg = err.message.replace(/^.*CAP:\s*/, '');
+    return res.status(422).json({
+      error: {
+        code: 'DEDUCTIONS_EXCEED_DEPOSIT',
+        message: cleanMsg,
+        details: {},
+      },
+    });
+  }
+
+  // Postgres PL/pgSQL deduction guard transition exception
+  if (
+    err.message &&
+    (err.message.startsWith('ILLEGAL:') || err.message.includes('ILLEGAL:'))
+  ) {
+    const cleanMsg = err.message.replace(/^.*ILLEGAL:\s*/, '');
+    return res.status(409).json({
+      error: {
+        code: 'INVALID_STATE',
+        message: cleanMsg,
+        details: {},
+      },
+    });
+  }
+
   // Postgres PL/pgSQL trigger parent item not found exception
   if (
     err.message &&
