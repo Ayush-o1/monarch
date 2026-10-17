@@ -6,6 +6,7 @@ import session from 'express-session';
 import connectPgSimple from 'connect-pg-simple';
 import config from './config.js';
 import { AppError } from './lib/errors.js';
+import { maskSensitivePath } from './lib/masking.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { originCheck } from './middleware/originCheck.js';
 import { pool as defaultPool } from './db/pool.js';
@@ -31,12 +32,13 @@ export function createApp({
   maxUploadMb,
   sessionStore,
   sessionSecret = config.sessionSecret,
+  cookieSecure = config.cookieSecure,
   reportCompress = true,
 } = {}) {
   const app = express();
   const isProduction = process.env.NODE_ENV === 'production';
 
-  if (config.cookieSecure) {
+  if (cookieSecure) {
     app.set('trust proxy', 1);
   }
 
@@ -82,7 +84,7 @@ export function createApp({
       cookie: {
         httpOnly: true,
         sameSite: 'lax',
-        secure: config.cookieSecure,
+        secure: cookieSecure,
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       },
     })
@@ -156,9 +158,19 @@ export function createApp({
   });
 
   app.all('/api/*', (req, _res, next) => {
-    const safePath = req.path
-      .replace(/\/api\/landlord\/[^/]+/, '/api/landlord/:token')
-      .replace(/\/l\/[^/]+/, '/l/:token');
+    const safePath = maskSensitivePath(req.path);
+    next(
+      new AppError(
+        404,
+        'NOT_FOUND',
+        `Route ${req.method} ${safePath} not found`
+      )
+    );
+  });
+
+  // 404 handler for non-API routes
+  app.use((req, res, next) => {
+    const safePath = maskSensitivePath(req.path);
     next(
       new AppError(
         404,
