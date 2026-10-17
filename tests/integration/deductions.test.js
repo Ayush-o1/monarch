@@ -483,6 +483,49 @@ describe('Deductions, Settlement, and Tenancy Close (Phase 8)', () => {
     );
   });
 
+  // 6b. Trigger precedence: cap guard only fires on INSERT, not UPDATE
+  it('trigger precedence: with deposit fully claimed, UPDATE of withdrawn line to proposed fails with ILLEGAL:, not CAP:', async () => {
+    const { agent } = await createRegisteredAgent('Precedence Tester');
+    const { token, tenancyId } = await setupSettlingTenancy(agent, {
+      depositPaise: 10000,
+    });
+
+    // Line 1 fills the entire deposit
+    await request(app)
+      .post(`/api/landlord/${token}/deductions`)
+      .send({
+        name: 'L',
+        description: 'Full deposit claim',
+        amountPaise: 10000,
+      })
+      .expect(201);
+
+    // Direct insert of a withdrawn line for 5000 (withdrawn lines are allowed past the cap)
+    const insRes = await pool.query(
+      `INSERT INTO deduction_lines (tenancy_id, description, amount_paise, created_by_name, status)
+       VALUES ($1, 'Withdrawn line', 5000, 'L', 'withdrawn')
+       RETURNING id`,
+      [tenancyId]
+    );
+    const withdrawnLineId = insRes.rows[0].id;
+
+    // UPDATE of withdrawn line to proposed:
+    // With 008, cap guard does not fire on UPDATE, so deduction_lines_guard fires
+    // and throws ILLEGAL: (mapping to 409 INVALID_STATE), not CAP: (422).
+    await assert.rejects(
+      () =>
+        pool.query(
+          `UPDATE deduction_lines SET status = 'proposed' WHERE id = $1`,
+          [withdrawnLineId]
+        ),
+      (err) => {
+        assert.match(err.message, /^ILLEGAL:/);
+        assert.doesNotMatch(err.message, /^CAP:/);
+        return true;
+      }
+    );
+  });
+
   // 7. Legal and illegal transitions through API
   it('transition rules: proposed->accepted, proposed->disputed, disputed->accepted, proposed->withdrawn, disputed->withdrawn; terminal states 409', async () => {
     const { agent } = await createRegisteredAgent('Transitions Tester');
