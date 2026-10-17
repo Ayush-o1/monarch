@@ -15,6 +15,7 @@ import { createItemsRouter } from './modules/items/routes.js';
 import { createMediaRouter } from './modules/media/routes.js';
 import { createLandlordRouter } from './modules/landlord/routes.js';
 import { createDeductionsRouter } from './modules/deductions/routes.js';
+import { createReportRouter } from './modules/report/routes.js';
 
 const PgSession = connectPgSimple(session);
 
@@ -107,6 +108,9 @@ export function createApp({
 
   // Tenancies routes
   app.use('/api/tenancies', createTenanciesRouter({ pool }));
+
+  // Report routes
+  app.use('/api/tenancies', createReportRouter({ pool, storage }));
 
   // Inspections and items routes
   app.use(createItemsRouter({ pool, storage }));
