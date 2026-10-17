@@ -5,7 +5,9 @@ import { maskSensitivePath } from '../../src/lib/masking.js';
 describe('maskSensitivePath', () => {
   it('masks /l/<token> paths', () => {
     assert.equal(
-      maskSensitivePath('/l/abc123def456789012345678901234567890123456789012345678901234'),
+      maskSensitivePath(
+        '/l/abc123def456789012345678901234567890123456789012345678901234'
+      ),
       '/l/:token'
     );
   });
@@ -27,7 +29,9 @@ describe('maskSensitivePath', () => {
       '/api/landlord/:token/media/123-456'
     );
     assert.equal(
-      maskSensitivePath('/api/landlord/abc123def456/inspections/789/acknowledge'),
+      maskSensitivePath(
+        '/api/landlord/abc123def456/inspections/789/acknowledge'
+      ),
       '/api/landlord/:token/inspections/789/acknowledge'
     );
   });
@@ -44,7 +48,10 @@ describe('maskSensitivePath', () => {
   });
 
   it('leaves non-sensitive paths unchanged', () => {
-    assert.equal(maskSensitivePath('/api/tenancies/123-456'), '/api/tenancies/123-456');
+    assert.equal(
+      maskSensitivePath('/api/tenancies/123-456'),
+      '/api/tenancies/123-456'
+    );
     assert.equal(maskSensitivePath('/api/health'), '/api/health');
     assert.equal(maskSensitivePath('/login.html'), '/login.html');
     assert.equal(maskSensitivePath('/'), '/');

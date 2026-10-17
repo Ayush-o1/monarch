@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import crypto from 'node:crypto';
 import request from 'supertest';
 import sharp from 'sharp';
 import rateLimit from 'express-rate-limit';
@@ -75,7 +74,11 @@ describe('Security Hardening & Ownership Verification', () => {
     const aliceEmail = `alice_${Date.now()}@example.com`;
     await aliceAgent
       .post('/api/auth/register')
-      .send({ name: 'Alice Tenant', email: aliceEmail, password: 'password1234' })
+      .send({
+        name: 'Alice Tenant',
+        email: aliceEmail,
+        password: 'password1234',
+      })
       .expect(201);
 
     // Register Bob
@@ -119,11 +122,15 @@ describe('Security Hardening & Ownership Verification', () => {
     aliceInviteToken = aliceInviteRes.body.url.split('/l/')[1];
 
     // Submit Alice move-in
-    await aliceAgent.post(`/api/inspections/${aliceMoveInId}/submit`).expect(200);
+    await aliceAgent
+      .post(`/api/inspections/${aliceMoveInId}/submit`)
+      .expect(200);
 
     // Landlord acknowledges move-in
     await request(app)
-      .post(`/api/landlord/${aliceInviteToken}/inspections/${aliceMoveInId}/acknowledge`)
+      .post(
+        `/api/landlord/${aliceInviteToken}/inspections/${aliceMoveInId}/acknowledge`
+      )
       .send({ name: 'Landlord Smith' })
       .expect(200);
 
@@ -145,7 +152,9 @@ describe('Security Hardening & Ownership Verification', () => {
     }
 
     // Submit Alice move-out
-    await aliceAgent.post(`/api/inspections/${aliceMoveOutId}/submit`).expect(200);
+    await aliceAgent
+      .post(`/api/inspections/${aliceMoveOutId}/submit`)
+      .expect(200);
 
     // Landlord proposes deduction on Alice's tenancy
     const aliceDedRes = await request(app)
@@ -188,7 +197,9 @@ describe('Security Hardening & Ownership Verification', () => {
 
     await bobAgent.post(`/api/inspections/${bobMoveInId}/submit`).expect(200);
     await request(app)
-      .post(`/api/landlord/${bobInviteToken}/inspections/${bobMoveInId}/acknowledge`)
+      .post(
+        `/api/landlord/${bobInviteToken}/inspections/${bobMoveInId}/acknowledge`
+      )
       .send({ name: 'Landlord Bob' })
       .expect(200);
 
@@ -386,7 +397,9 @@ describe('Security Hardening & Ownership Verification', () => {
     for (const route of tenantSessionRoutes) {
       describe(`Route: ${route.name}`, () => {
         it('without session returns 401 UNAUTHORIZED', async () => {
-          const targetPath = route.isResource ? route.getPath(route.getId()) : route.getPath();
+          const targetPath = route.isResource
+            ? route.getPath(route.getId())
+            : route.getPath();
           let req = unauthAgent[route.method](targetPath);
           if (route.isUpload) {
             req = req.attach('photo', sampleJpg, 'test.jpg');
@@ -394,7 +407,11 @@ describe('Security Hardening & Ownership Verification', () => {
             req = req.send(route.body);
           }
           const res = await req;
-          assert.equal(res.status, 401, `Expected 401 for unauthenticated ${route.name}, got ${res.status}`);
+          assert.equal(
+            res.status,
+            401,
+            `Expected 401 for unauthenticated ${route.name}, got ${res.status}`
+          );
           assert.equal(res.body.error?.code, 'UNAUTHORIZED');
         });
 
@@ -457,7 +474,10 @@ describe('Security Hardening & Ownership Verification', () => {
     it('expired token returns 410 LINK_EXPIRED', async () => {
       const expT = await aliceAgent
         .post('/api/tenancies')
-        .send({ propertyLabel: 'Expired Invite Tenancy', depositPaise: 1000000 })
+        .send({
+          propertyLabel: 'Expired Invite Tenancy',
+          depositPaise: 1000000,
+        })
         .expect(201);
 
       const token = generateToken();
@@ -478,7 +498,10 @@ describe('Security Hardening & Ownership Verification', () => {
     it('revoked token returns 410 LINK_REVOKED', async () => {
       const revT = await aliceAgent
         .post('/api/tenancies')
-        .send({ propertyLabel: 'Revoked Invite Tenancy', depositPaise: 1000000 })
+        .send({
+          propertyLabel: 'Revoked Invite Tenancy',
+          depositPaise: 1000000,
+        })
         .expect(201);
 
       const token = generateToken();
@@ -505,21 +528,27 @@ describe('Security Hardening & Ownership Verification', () => {
 
       // Token A trying to acknowledge Tenancy B's inspection
       const resAck = await request(app)
-        .post(`/api/landlord/${aliceInviteToken}/inspections/${bobMoveInId}/acknowledge`)
+        .post(
+          `/api/landlord/${aliceInviteToken}/inspections/${bobMoveInId}/acknowledge`
+        )
         .send({ name: 'Cross Landlord' })
         .expect(404);
       assert.equal(resAck.body.error?.code, 'NOT_FOUND');
 
       // Token A trying to request changes on Tenancy B's inspection
       const resReqChanges = await request(app)
-        .post(`/api/landlord/${aliceInviteToken}/inspections/${bobMoveInId}/request-changes`)
+        .post(
+          `/api/landlord/${aliceInviteToken}/inspections/${bobMoveInId}/request-changes`
+        )
         .send({ name: 'Cross Landlord', note: 'Changes needed' })
         .expect(404);
       assert.equal(resReqChanges.body.error?.code, 'NOT_FOUND');
 
       // Token A trying to withdraw deduction line from Tenancy B
       const resWithdraw = await request(app)
-        .post(`/api/landlord/${aliceInviteToken}/deductions/${bobDeductionId}/withdraw`)
+        .post(
+          `/api/landlord/${aliceInviteToken}/deductions/${bobDeductionId}/withdraw`
+        )
         .send({ name: 'Cross Landlord' })
         .expect(404);
       assert.equal(resWithdraw.body.error?.code, 'NOT_FOUND');
@@ -530,7 +559,10 @@ describe('Security Hardening & Ownership Verification', () => {
     const endpoints = [
       { name: 'Root page /', path: '/' },
       { name: 'Login page /login.html', path: '/login.html' },
-      { name: 'Landlord review page /l/:token', getPath: () => `/l/${aliceInviteToken}` },
+      {
+        name: 'Landlord review page /l/:token',
+        getPath: () => `/l/${aliceInviteToken}`,
+      },
       { name: 'API health route /api/health', path: '/api/health' },
     ];
 
@@ -542,9 +574,18 @@ describe('Security Hardening & Ownership Verification', () => {
         // CSP
         const csp = res.headers['content-security-policy'];
         assert.ok(csp, `Missing CSP header on ${ep.name}`);
-        assert.ok(csp.includes("default-src 'self'"), `CSP must contain default-src 'self' on ${ep.name}`);
-        assert.ok(!csp.includes("'unsafe-inline'"), `CSP must not contain 'unsafe-inline' on ${ep.name}`);
-        assert.ok(!csp.includes("'unsafe-eval'"), `CSP must not contain 'unsafe-eval' on ${ep.name}`);
+        assert.ok(
+          csp.includes("default-src 'self'"),
+          `CSP must contain default-src 'self' on ${ep.name}`
+        );
+        assert.ok(
+          !csp.includes("'unsafe-inline'"),
+          `CSP must not contain 'unsafe-inline' on ${ep.name}`
+        );
+        assert.ok(
+          !csp.includes("'unsafe-eval'"),
+          `CSP must not contain 'unsafe-eval' on ${ep.name}`
+        );
 
         // Referrer-Policy
         assert.equal(res.headers['referrer-policy'], 'no-referrer');
@@ -554,7 +595,9 @@ describe('Security Hardening & Ownership Verification', () => {
 
         // X-Frame-Options or frame-ancestors none
         const frameAncestorsNone = csp.includes("frame-ancestors 'none'");
-        const xFrameDeny = res.headers['x-frame-options'] === 'DENY' || res.headers['x-frame-options'] === 'SAMEORIGIN';
+        const xFrameDeny =
+          res.headers['x-frame-options'] === 'DENY' ||
+          res.headers['x-frame-options'] === 'SAMEORIGIN';
         assert.ok(
           frameAncestorsNone || xFrameDeny,
           `Expected frame restriction (frame-ancestors 'none' or X-Frame-Options) on ${ep.name}`
@@ -566,7 +609,9 @@ describe('Security Hardening & Ownership Verification', () => {
       const resPage = await request(app).get(`/l/${aliceInviteToken}`);
       assert.ok(resPage.headers['cache-control']?.includes('no-store'));
 
-      const resApi = await request(app).get(`/api/landlord/${aliceInviteToken}/tenancy`);
+      const resApi = await request(app).get(
+        `/api/landlord/${aliceInviteToken}/tenancy`
+      );
       assert.ok(resApi.headers['cache-control']?.includes('no-store'));
     });
 
@@ -597,8 +642,14 @@ describe('Security Hardening & Ownership Verification', () => {
 
       const setCookie = res.headers['set-cookie'];
       assert.ok(setCookie, 'Expected Set-Cookie header to be present');
-      const cookieStr = Array.isArray(setCookie) ? setCookie.join('; ') : setCookie;
-      assert.match(cookieStr, /;\s*Secure/i, 'Expected Set-Cookie to contain Secure attribute');
+      const cookieStr = Array.isArray(setCookie)
+        ? setCookie.join('; ')
+        : setCookie;
+      assert.match(
+        cookieStr,
+        /;\s*Secure/i,
+        'Expected Set-Cookie to contain Secure attribute'
+      );
     });
   });
 
@@ -615,7 +666,9 @@ describe('Security Hardening & Ownership Verification', () => {
           legacyHeaders: false,
           handler: (_req, _res, next) => {
             import('../../src/lib/errors.js').then(({ AppError }) => {
-              next(new AppError(429, 'TOO_MANY_REQUESTS', 'Upload limit exceeded'));
+              next(
+                new AppError(429, 'TOO_MANY_REQUESTS', 'Upload limit exceeded')
+              );
             });
           },
         }),
@@ -624,7 +677,11 @@ describe('Security Hardening & Ownership Verification', () => {
       const userAgent = request.agent(limitedApp);
       await userAgent
         .post('/api/auth/register')
-        .send({ name: 'Rate User', email: `rate_${Date.now()}@example.com`, password: 'password1234' })
+        .send({
+          name: 'Rate User',
+          email: `rate_${Date.now()}@example.com`,
+          password: 'password1234',
+        })
         .expect(201);
 
       const tRes = await userAgent
@@ -640,27 +697,50 @@ describe('Security Hardening & Ownership Verification', () => {
       const itemId = itemRes.body.id;
 
       const p1 = await sharp({
-        create: { width: 10, height: 10, channels: 3, background: { r: 10, g: 10, b: 10 } },
+        create: {
+          width: 10,
+          height: 10,
+          channels: 3,
+          background: { r: 10, g: 10, b: 10 },
+        },
       })
         .jpeg()
         .toBuffer();
       const p2 = await sharp({
-        create: { width: 10, height: 10, channels: 3, background: { r: 20, g: 20, b: 20 } },
+        create: {
+          width: 10,
+          height: 10,
+          channels: 3,
+          background: { r: 20, g: 20, b: 20 },
+        },
       })
         .jpeg()
         .toBuffer();
       const p3 = await sharp({
-        create: { width: 10, height: 10, channels: 3, background: { r: 30, g: 30, b: 30 } },
+        create: {
+          width: 10,
+          height: 10,
+          channels: 3,
+          background: { r: 30, g: 30, b: 30 },
+        },
       })
         .jpeg()
         .toBuffer();
 
       // 1st upload: OK
-      await userAgent.post(`/api/items/${itemId}/media`).attach('photo', p1, 'p1.jpg').expect(201);
+      await userAgent
+        .post(`/api/items/${itemId}/media`)
+        .attach('photo', p1, 'p1.jpg')
+        .expect(201);
       // 2nd upload: OK
-      await userAgent.post(`/api/items/${itemId}/media`).attach('photo', p2, 'p2.jpg').expect(201);
+      await userAgent
+        .post(`/api/items/${itemId}/media`)
+        .attach('photo', p2, 'p2.jpg')
+        .expect(201);
       // 3rd upload: 429
-      const res3 = await userAgent.post(`/api/items/${itemId}/media`).attach('photo', p3, 'p3.jpg');
+      const res3 = await userAgent
+        .post(`/api/items/${itemId}/media`)
+        .attach('photo', p3, 'p3.jpg');
       assert.equal(res3.status, 429);
       assert.equal(res3.body.error?.code, 'TOO_MANY_REQUESTS');
     });

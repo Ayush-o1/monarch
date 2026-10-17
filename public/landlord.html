@@ -24,9 +24,7 @@
           class="alert error card-padded d-none"
           role="alert"
         >
-          <h2 class="text-lg mb-sm">
-            This link is not valid
-          </h2>
+          <h2 class="text-lg mb-sm">This link is not valid</h2>
           <p class="m-0">
             Please check the web address or contact the tenant to provide a
             valid link.
@@ -47,10 +45,7 @@
         </div>
 
         <!-- Empty State -->
-        <div
-          id="empty-state"
-          class="card empty-state-card d-none"
-        >
+        <div id="empty-state" class="card empty-state-card d-none">
           <p class="text-muted text-md m-0">
             The tenant has not submitted a record yet.
           </p>
@@ -80,10 +75,7 @@
           <div id="inspections-container"></div>
 
           <!-- Settlement & Deductions Section (shown after move-out submitted) -->
-          <div
-            id="landlord-deductions-section"
-            class="mt-xl d-none"
-          >
+          <div id="landlord-deductions-section" class="mt-xl d-none">
             <!-- Settlement Totals Card -->
             <section
               id="landlord-totals-card"
@@ -92,43 +84,45 @@
               <h3 class="mb-1">Deposit Settlement Summary</h3>
               <div class="summary-grid mb-sm">
                 <div>
-                  <p class="text-xs text-muted mb-xs">
-                    Total Deposit
-                  </p>
-                  <p id="landlord-total-deposit" class="text-lg font-semibold m-0"></p>
+                  <p class="text-xs text-muted mb-xs">Total Deposit</p>
+                  <p
+                    id="landlord-total-deposit"
+                    class="text-lg font-semibold m-0"
+                  ></p>
                 </div>
                 <div>
-                  <p class="text-xs text-muted mb-xs">
-                    Accepted
-                  </p>
-                  <p id="landlord-accepted-val" class="text-lg font-semibold text-success m-0"></p>
+                  <p class="text-xs text-muted mb-xs">Accepted</p>
+                  <p
+                    id="landlord-accepted-val"
+                    class="text-lg font-semibold text-success m-0"
+                  ></p>
                 </div>
                 <div>
-                  <p class="text-xs text-muted mb-xs">
-                    Awaiting Response
-                  </p>
-                  <p id="landlord-awaiting-val" class="text-lg font-semibold text-amber m-0"></p>
+                  <p class="text-xs text-muted mb-xs">Awaiting Response</p>
+                  <p
+                    id="landlord-awaiting-val"
+                    class="text-lg font-semibold text-amber m-0"
+                  ></p>
                 </div>
                 <div>
-                  <p class="text-xs text-muted mb-xs">
-                    Disputed
-                  </p>
-                  <p id="landlord-disputed-val" class="text-lg font-semibold text-danger m-0"></p>
+                  <p class="text-xs text-muted mb-xs">Disputed</p>
+                  <p
+                    id="landlord-disputed-val"
+                    class="text-lg font-semibold text-danger m-0"
+                  ></p>
                 </div>
                 <div>
-                  <p class="text-xs text-muted mb-xs">
-                    Unclaimed Deposit
-                  </p>
-                  <p id="landlord-unclaimed-val" class="text-lg font-semibold text-primary m-0"></p>
+                  <p class="text-xs text-muted mb-xs">Unclaimed Deposit</p>
+                  <p
+                    id="landlord-unclaimed-val"
+                    class="text-lg font-semibold text-primary m-0"
+                  ></p>
                 </div>
               </div>
             </section>
 
             <!-- Propose Deduction Form (shown when settling) -->
-            <section
-              id="propose-deduction-card"
-              class="card card-padded mb-lg"
-            >
+            <section id="propose-deduction-card" class="card card-padded mb-lg">
               <h3 class="mb-sm">Propose a Deduction</h3>
               <p class="text-sm text-muted mb-1-25">
                 Propose a deduction against the tenant deposit. You may link it
@@ -208,11 +202,13 @@
                 id="landlord-empty-lines"
                 class="card card-padded text-center d-none"
               >
-                <p class="text-muted m-0">
-                  No deductions proposed yet.
-                </p>
+                <p class="text-muted m-0">No deductions proposed yet.</p>
               </div>
-              <ul id="landlord-lines-container" class="semantic-list" role="list"></ul>
+              <ul
+                id="landlord-lines-container"
+                class="semantic-list"
+                role="list"
+              ></ul>
             </section>
           </div>
         </div>

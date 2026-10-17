@@ -25,17 +25,9 @@
         <p id="loading-state">Loading comparison record...</p>
 
         <!-- Unavailable State (e.g. 409 draft / not ready) -->
-        <div
-          id="unavailable-state"
-          class="card empty-state-card d-none"
-        >
-          <h2 class="text-lg mb-sm">
-            Comparison Unavailable
-          </h2>
-          <p
-            id="unavailable-message"
-            class="text-muted m-0"
-          >
+        <div id="unavailable-state" class="card empty-state-card d-none">
+          <h2 class="text-lg mb-sm">Comparison Unavailable</h2>
+          <p id="unavailable-message" class="text-muted m-0">
             Move-out comparison is only available after the move-out inspection
             has been submitted.
           </p>
@@ -49,10 +41,7 @@
               <h2 id="property-label" class="mb-0"></h2>
               <span id="tenancy-status" class="badge"></span>
             </div>
-            <p
-              id="property-address"
-              class="text-muted mb-md"
-            ></p>
+            <p id="property-address" class="text-muted mb-md"></p>
             <div class="flex-wrap gap-xl text-base">
               <div id="tenant-row" class="d-none">
                 <strong>Tenant:</strong> <span id="tenant-name"></span>
@@ -74,59 +63,39 @@
             <h3 class="mb-md">Summary</h3>
             <div id="summary-metrics" class="summary-grid">
               <div class="card text-center">
-                <div id="metric-total" class="stat-number">
-                  0
-                </div>
-                <div class="stat-label text-muted">
-                  Total Items
-                </div>
+                <div id="metric-total" class="stat-number">0</div>
+                <div class="stat-label text-muted">Total Items</div>
               </div>
               <div class="card card-border-danger text-center">
-                <div id="metric-worse" class="stat-number text-danger">
-                  0
-                </div>
-                <div class="stat-label text-danger">
-                  Worse
-                </div>
+                <div id="metric-worse" class="stat-number text-danger">0</div>
+                <div class="stat-label text-danger">Worse</div>
               </div>
               <div class="card card-border-gray text-center">
-                <div id="metric-same" class="stat-number text-gray-dark">
-                  0
-                </div>
-                <div class="stat-label text-gray-medium">
-                  Same
-                </div>
+                <div id="metric-same" class="stat-number text-gray-dark">0</div>
+                <div class="stat-label text-gray-medium">Same</div>
               </div>
               <div class="card card-border-success text-center">
-                <div id="metric-better" class="stat-number text-success">
-                  0
-                </div>
-                <div class="stat-label text-success">
-                  Better
-                </div>
+                <div id="metric-better" class="stat-number text-success">0</div>
+                <div class="stat-label text-success">Better</div>
               </div>
               <div class="card card-border-purple text-center">
-                <div id="metric-added" class="stat-number text-purple">
-                  0
-                </div>
-                <div class="stat-label text-purple">
-                  Added
-                </div>
+                <div id="metric-added" class="stat-number text-purple">0</div>
+                <div class="stat-label text-purple">Added</div>
               </div>
               <div class="card card-border-orange text-center">
-                <div id="metric-missing" class="stat-number text-orange">
-                  0
-                </div>
-                <div class="stat-label text-orange">
-                  Missing
-                </div>
+                <div id="metric-missing" class="stat-number text-orange">0</div>
+                <div class="stat-label text-orange">Missing</div>
               </div>
             </div>
           </section>
 
           <section>
             <h3 class="mb-md">Item Comparison</h3>
-            <ul id="comparison-items-container" class="semantic-list" role="list"></ul>
+            <ul
+              id="comparison-items-container"
+              class="semantic-list"
+              role="list"
+            ></ul>
           </section>
         </div>
       </main>

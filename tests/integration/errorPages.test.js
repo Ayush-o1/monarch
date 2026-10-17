@@ -35,7 +35,10 @@ describe('Error Pages and 404 Fallback Handling', () => {
 
     assert.ok(res.headers['content-type']?.includes('application/json'));
     assert.equal(res.body.error?.code, 'NOT_FOUND');
-    assert.match(res.body.error?.message, /Route GET \/api\/unknown-endpoint not found/);
+    assert.match(
+      res.body.error?.message,
+      /Route GET \/api\/unknown-endpoint not found/
+    );
   });
 
   it('unknown non-GET requests return JSON 404', async () => {

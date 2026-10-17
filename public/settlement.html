@@ -16,11 +16,7 @@
       </header>
 
       <main>
-        <div
-          id="general-error"
-          class="alert error d-none"
-          role="alert"
-        ></div>
+        <div id="general-error" class="alert error d-none" role="alert"></div>
         <p id="loading-state">Loading settlement record...</p>
 
         <div id="settlement-content" class="d-none">
@@ -34,46 +30,48 @@
           </section>
 
           <!-- Totals Panel -->
-          <section
-            id="totals-card"
-            class="card card-padded card-light mb-lg"
-          >
+          <section id="totals-card" class="card card-padded card-light mb-lg">
             <h3 class="mb-1">Settlement Summary</h3>
             <div class="settlement-grid mb-1-25">
               <div>
-                <p class="text-xs text-muted mb-xs">
-                  Total Deposit
-                </p>
+                <p class="text-xs text-muted mb-xs">Total Deposit</p>
                 <p id="total-deposit-val" class="text-lg font-semibold m-0"></p>
               </div>
               <div>
-                <p class="text-xs text-muted mb-xs">
-                  Accepted
-                </p>
-                <p id="accepted-val" class="text-lg font-semibold text-success m-0"></p>
+                <p class="text-xs text-muted mb-xs">Accepted</p>
+                <p
+                  id="accepted-val"
+                  class="text-lg font-semibold text-success m-0"
+                ></p>
               </div>
               <div>
-                <p class="text-xs text-muted mb-xs">
-                  Awaiting Response
-                </p>
-                <p id="awaiting-val" class="text-lg font-semibold text-amber m-0"></p>
+                <p class="text-xs text-muted mb-xs">Awaiting Response</p>
+                <p
+                  id="awaiting-val"
+                  class="text-lg font-semibold text-amber m-0"
+                ></p>
               </div>
               <div>
-                <p class="text-xs text-muted mb-xs">
-                  Disputed
-                </p>
-                <p id="disputed-val" class="text-lg font-semibold text-danger m-0"></p>
+                <p class="text-xs text-muted mb-xs">Disputed</p>
+                <p
+                  id="disputed-val"
+                  class="text-lg font-semibold text-danger m-0"
+                ></p>
               </div>
               <div>
-                <p class="text-xs text-muted mb-xs">
-                  Unclaimed Deposit
-                </p>
-                <p id="unclaimed-val" class="text-lg font-semibold text-primary m-0"></p>
+                <p class="text-xs text-muted mb-xs">Unclaimed Deposit</p>
+                <p
+                  id="unclaimed-val"
+                  class="text-lg font-semibold text-primary m-0"
+                ></p>
               </div>
             </div>
 
             <!-- Timeline information (plain info only, neutral) -->
-            <div id="timeline-info" class="card-border-gray pt-sm text-sm text-muted">
+            <div
+              id="timeline-info"
+              class="card-border-gray pt-sm text-sm text-muted"
+            >
               <p id="timeline-text" class="m-0"></p>
             </div>
           </section>
@@ -90,11 +88,7 @@
                 no further deduction proposals or responses can be submitted.
               </p>
             </div>
-            <button
-              id="open-close-modal-btn"
-              type="button"
-              class="btn w-auto"
-            >
+            <button id="open-close-modal-btn" type="button" class="btn w-auto">
               Close Tenancy
             </button>
           </section>
@@ -102,37 +96,22 @@
           <!-- Deductions List -->
           <section class="mb-lg">
             <h3 class="mb-1">Deduction Lines</h3>
-            <div
-              id="empty-lines"
-              class="card empty-state-card d-none"
-            >
-              <p class="text-muted m-0">
-                No deductions proposed yet.
-              </p>
+            <div id="empty-lines" class="card empty-state-card d-none">
+              <p class="text-muted m-0">No deductions proposed yet.</p>
             </div>
             <ul id="lines-container" class="semantic-list" role="list"></ul>
           </section>
         </div>
 
         <!-- Close Tenancy Modal -->
-        <div
-          id="close-modal"
-          class="modal-backdrop"
-        >
+        <div id="close-modal" class="modal-backdrop">
           <div class="modal-box">
             <h3 class="mb-md">Confirm Tenancy Closure</h3>
             <p id="close-modal-desc" class="text-base line-height-1-6 mb-1"></p>
 
-            <div
-              id="unresolved-ack-group"
-              class="mb-1-25 d-none"
-            >
+            <div id="unresolved-ack-group" class="mb-1-25 d-none">
               <label class="flex-row gap-sm text-sm">
-                <input
-                  type="checkbox"
-                  id="unresolved-checkbox"
-                  class="mt-xs"
-                />
+                <input type="checkbox" id="unresolved-checkbox" class="mt-xs" />
                 <span id="unresolved-checkbox-label"></span>
               </label>
             </div>
@@ -151,11 +130,7 @@
               >
                 Cancel
               </button>
-              <button
-                id="confirm-close-btn"
-                type="button"
-                class="btn w-auto"
-              >
+              <button id="confirm-close-btn" type="button" class="btn w-auto">
                 Confirm Close
               </button>
             </div>

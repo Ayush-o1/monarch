@@ -23,16 +23,16 @@
             <div class="flex-between flex-wrap gap-sm">
               <div>
                 <h2 id="inspection-title" class="mb-xs"></h2>
-                <p id="inspection-property" class="text-muted text-base mb-0"></p>
+                <p
+                  id="inspection-property"
+                  class="text-muted text-base mb-0"
+                ></p>
               </div>
               <span id="inspection-status" class="badge"></span>
             </div>
           </section>
 
-          <div
-            id="locked-banner"
-            class="alert alert-warning mb-1-5 d-none"
-          >
+          <div id="locked-banner" class="alert alert-warning mb-1-5 d-none">
             This inspection has been submitted and is locked for editing.
             Records are read-only.
           </div>
@@ -51,21 +51,21 @@
           </div>
 
           <section id="quick-add-section" class="card card-light mb-lg">
-            <h3 class="text-md mb-sm">
-              Quick Add Common Items
-            </h3>
+            <h3 class="text-md mb-sm">Quick Add Common Items</h3>
             <p class="text-sm text-muted mb-md">
               Click a room below to automatically add standard inventory items.
               Existing items are preserved.
             </p>
             <div id="quick-add-buttons" class="flex-wrap gap-sm"></div>
-            <p id="quick-add-status" class="text-xs text-muted mt-sm d-none" aria-live="polite"></p>
+            <p
+              id="quick-add-status"
+              class="text-xs text-muted mt-sm d-none"
+              aria-live="polite"
+            ></p>
           </section>
 
           <section id="add-item-section" class="card mb-lg">
-            <h3 class="text-md mb-1">
-              Add Individual Item
-            </h3>
+            <h3 class="text-md mb-1">Add Individual Item</h3>
             <form id="add-item-form" novalidate>
               <div class="form-grid-2 mb-1">
                 <div class="form-group mb-0">
@@ -96,17 +96,18 @@
               <div class="form-grid-2 mb-1">
                 <div class="form-group mb-0">
                   <label for="condition-input">Condition</label>
-                  <select
-                    id="condition-input"
-                    name="condition"
-                  >
+                  <select id="condition-input" name="condition">
                     <option value="">-- Select condition (optional) --</option>
                     <option value="good">Good</option>
                     <option value="minor_wear">Minor wear</option>
                     <option value="damaged">Damaged</option>
                     <option value="missing">Missing</option>
                   </select>
-                  <div id="condition-error" class="field-error" role="alert"></div>
+                  <div
+                    id="condition-error"
+                    class="field-error"
+                    role="alert"
+                  ></div>
                 </div>
                 <div class="form-group mb-0">
                   <label for="note-input">Note / Remarks (optional)</label>

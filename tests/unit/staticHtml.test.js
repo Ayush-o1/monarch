@@ -15,7 +15,10 @@ describe('Static HTML and JS Security Auditing', () => {
     .filter((f) => f.endsWith('.html'));
 
   it('found all expected public HTML pages', () => {
-    assert.ok(htmlFiles.length >= 9, `Expected at least 9 HTML files, found ${htmlFiles.length}`);
+    assert.ok(
+      htmlFiles.length >= 9,
+      `Expected at least 9 HTML files, found ${htmlFiles.length}`
+    );
     assert.ok(htmlFiles.includes('index.html'));
     assert.ok(htmlFiles.includes('login.html'));
     assert.ok(htmlFiles.includes('register.html'));
@@ -44,7 +47,10 @@ describe('Static HTML and JS Security Auditing', () => {
       it('has a non-empty <title> tag', () => {
         const titleMatch = content.match(/<title>([^<]+)<\/title>/i);
         assert.ok(titleMatch, `${file} must contain a <title> tag`);
-        assert.ok(titleMatch[1].trim().length > 0, `${file} title must not be empty`);
+        assert.ok(
+          titleMatch[1].trim().length > 0,
+          `${file} title must not be empty`
+        );
       });
 
       it('has a viewport <meta> tag', () => {
@@ -56,7 +62,9 @@ describe('Static HTML and JS Security Auditing', () => {
       });
 
       it('contains no inline style= attributes', () => {
-        const styleMatches = [...content.matchAll(/\bstyle\s*=\s*["'][^"']*["']/gi)];
+        const styleMatches = [
+          ...content.matchAll(/\bstyle\s*=\s*["'][^"']*["']/gi),
+        ];
         assert.equal(
           styleMatches.length,
           0,
@@ -65,7 +73,9 @@ describe('Static HTML and JS Security Auditing', () => {
       });
 
       it('contains no inline on*= event handler attributes', () => {
-        const onMatches = [...content.matchAll(/\bon\w+\s*=\s*["'][^"']*["']/gi)];
+        const onMatches = [
+          ...content.matchAll(/\bon\w+\s*=\s*["'][^"']*["']/gi),
+        ];
         assert.equal(
           onMatches.length,
           0,
@@ -74,7 +84,9 @@ describe('Static HTML and JS Security Auditing', () => {
       });
 
       it('has no inline <script> bodies (every script has a src)', () => {
-        const scriptTags = [...content.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+        const scriptTags = [
+          ...content.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi),
+        ];
         for (const [fullTag, attrs, body] of scriptTags) {
           assert.match(
             attrs,
