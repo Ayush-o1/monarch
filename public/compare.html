@@ -7,26 +7,12 @@
     <link rel="stylesheet" href="/css/styles.css" />
   </head>
   <body>
-    <div class="container" style="max-width: 900px">
+    <div class="container container-wide">
       <header>
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-          "
-        >
+        <div class="flex-between-baseline">
           <div>
             <h1>Handover</h1>
-            <p
-              style="
-                color: var(--text-muted);
-                font-size: 0.95rem;
-                margin-bottom: 0;
-              "
-            >
+            <p class="text-muted text-base mb-0">
               Move-in vs Move-out Inspection Comparison
             </p>
           </div>
@@ -41,15 +27,14 @@
         <!-- Unavailable State (e.g. 409 draft / not ready) -->
         <div
           id="unavailable-state"
-          class="card"
-          style="display: none; padding: 2rem; text-align: center"
+          class="card empty-state-card d-none"
         >
-          <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem">
+          <h2 class="text-lg mb-sm">
             Comparison Unavailable
           </h2>
           <p
             id="unavailable-message"
-            style="color: var(--text-muted); margin: 0"
+            class="text-muted m-0"
           >
             Move-out comparison is only available after the move-out inspection
             has been submitted.
@@ -57,204 +42,91 @@
         </div>
 
         <!-- Main Content -->
-        <div id="comparison-content" style="display: none">
+        <div id="comparison-content" class="d-none">
           <!-- Tenancy Card -->
-          <section
-            class="card"
-            style="
-              margin-bottom: 1.5rem;
-              padding: 1.25rem;
-              border: 1px solid var(--border-color);
-              border-radius: 6px;
-            "
-          >
-            <div
-              style="
-                display: flex;
-                justify-content: space-between;
-                align-items: baseline;
-                flex-wrap: wrap;
-                gap: 0.5rem;
-                margin-bottom: 0.5rem;
-              "
-            >
-              <h2 id="property-label" style="margin-bottom: 0"></h2>
+          <section class="card mb-1-5">
+            <div class="flex-between-baseline mb-sm">
+              <h2 id="property-label" class="mb-0"></h2>
               <span id="tenancy-status" class="badge"></span>
             </div>
             <p
               id="property-address"
-              style="color: var(--text-muted); margin-bottom: 0.75rem"
+              class="text-muted mb-md"
             ></p>
-            <div
-              style="
-                display: flex;
-                gap: 1.5rem;
-                flex-wrap: wrap;
-                font-size: 0.95rem;
-              "
-            >
-              <div id="tenant-row" style="display: none">
+            <div class="flex-wrap gap-xl text-base">
+              <div id="tenant-row" class="d-none">
                 <strong>Tenant:</strong> <span id="tenant-name"></span>
               </div>
-              <div id="landlord-row" style="display: none">
+              <div id="landlord-row" class="d-none">
                 <strong>Landlord:</strong> <span id="landlord-name"></span>
               </div>
               <div>
                 <strong>Deposit:</strong> <span id="deposit-amount"></span>
               </div>
-              <div id="refund-window-row" style="display: none">
+              <div id="refund-window-row" class="d-none">
                 <strong>Refund Window:</strong> <span id="refund-window"></span>
               </div>
             </div>
           </section>
 
           <!-- Summary Metrics Cards -->
-          <section style="margin-bottom: 2rem">
-            <h3 style="margin-bottom: 0.75rem">Summary</h3>
-            <div
-              id="summary-metrics"
-              style="
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-                gap: 0.75rem;
-              "
-            >
-              <div
-                class="card"
-                style="
-                  padding: 1rem;
-                  text-align: center;
-                  border: 1px solid var(--border-color);
-                  border-radius: 6px;
-                "
-              >
-                <div
-                  id="metric-total"
-                  style="font-size: 1.5rem; font-weight: 700"
-                >
+          <section class="mb-lg">
+            <h3 class="mb-md">Summary</h3>
+            <div id="summary-metrics" class="summary-grid">
+              <div class="card text-center">
+                <div id="metric-total" class="stat-number">
                   0
                 </div>
-                <div style="font-size: 0.85rem; color: var(--text-muted)">
+                <div class="stat-label text-muted">
                   Total Items
                 </div>
               </div>
-              <div
-                class="card"
-                style="
-                  padding: 1rem;
-                  text-align: center;
-                  border: 1px solid #fecaca;
-                  background: #fef2f2;
-                  border-radius: 6px;
-                "
-              >
-                <div
-                  id="metric-worse"
-                  style="font-size: 1.5rem; font-weight: 700; color: #991b1b"
-                >
+              <div class="card card-border-danger text-center">
+                <div id="metric-worse" class="stat-number text-danger">
                   0
                 </div>
-                <div
-                  style="font-size: 0.85rem; color: #991b1b; font-weight: 500"
-                >
+                <div class="stat-label text-danger">
                   Worse
                 </div>
               </div>
-              <div
-                class="card"
-                style="
-                  padding: 1rem;
-                  text-align: center;
-                  border: 1px solid var(--border-color);
-                  background: #f9fafb;
-                  border-radius: 6px;
-                "
-              >
-                <div
-                  id="metric-same"
-                  style="font-size: 1.5rem; font-weight: 700; color: #374151"
-                >
+              <div class="card card-border-gray text-center">
+                <div id="metric-same" class="stat-number text-gray-dark">
                   0
                 </div>
-                <div
-                  style="font-size: 0.85rem; color: #4b5563; font-weight: 500"
-                >
+                <div class="stat-label text-gray-medium">
                   Same
                 </div>
               </div>
-              <div
-                class="card"
-                style="
-                  padding: 1rem;
-                  text-align: center;
-                  border: 1px solid #bbf7d0;
-                  background: #f0fdf4;
-                  border-radius: 6px;
-                "
-              >
-                <div
-                  id="metric-better"
-                  style="font-size: 1.5rem; font-weight: 700; color: #166534"
-                >
+              <div class="card card-border-success text-center">
+                <div id="metric-better" class="stat-number text-success">
                   0
                 </div>
-                <div
-                  style="font-size: 0.85rem; color: #166534; font-weight: 500"
-                >
+                <div class="stat-label text-success">
                   Better
                 </div>
               </div>
-              <div
-                class="card"
-                style="
-                  padding: 1rem;
-                  text-align: center;
-                  border: 1px solid #ddd6fe;
-                  background: #faf5ff;
-                  border-radius: 6px;
-                "
-              >
-                <div
-                  id="metric-added"
-                  style="font-size: 1.5rem; font-weight: 700; color: #5b21b6"
-                >
+              <div class="card card-border-purple text-center">
+                <div id="metric-added" class="stat-number text-purple">
                   0
                 </div>
-                <div
-                  style="font-size: 0.85rem; color: #5b21b6; font-weight: 500"
-                >
+                <div class="stat-label text-purple">
                   Added
                 </div>
               </div>
-              <div
-                class="card"
-                style="
-                  padding: 1rem;
-                  text-align: center;
-                  border: 1px solid #fed7aa;
-                  background: #fff7ed;
-                  border-radius: 6px;
-                "
-              >
-                <div
-                  id="metric-missing"
-                  style="font-size: 1.5rem; font-weight: 700; color: #9a3412"
-                >
+              <div class="card card-border-orange text-center">
+                <div id="metric-missing" class="stat-number text-orange">
                   0
                 </div>
-                <div
-                  style="font-size: 0.85rem; color: #9a3412; font-weight: 500"
-                >
+                <div class="stat-label text-orange">
                   Missing
                 </div>
               </div>
             </div>
           </section>
 
-          <!-- Items Comparison -->
           <section>
-            <h3 style="margin-bottom: 0.75rem">Item Comparison</h3>
-            <div id="comparison-items-container"></div>
+            <h3 class="mb-md">Item Comparison</h3>
+            <ul id="comparison-items-container" class="semantic-list" role="list"></ul>
           </section>
         </div>
       </main>
@@ -269,14 +141,7 @@
         />
       </div>
 
-      <footer
-        style="
-          margin-top: 3rem;
-          text-align: center;
-          color: var(--text-muted);
-          font-size: 0.85rem;
-        "
-      >
+      <footer class="footer-plain">
         <p>
           Handover records what the parties entered and acknowledged. It is not
           legal advice.

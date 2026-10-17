@@ -10,7 +10,7 @@
     <div class="container">
       <header>
         <h1>Handover</h1>
-        <p style="color: var(--text-muted); font-size: 0.95rem">
+        <p class="text-muted text-base">
           Move-in &amp; Move-out Inspection Review
         </p>
       </header>
@@ -21,13 +21,13 @@
         <!-- Error States: 404 & 410 -->
         <div
           id="link-invalid-state"
-          class="alert error"
-          style="display: none; padding: 1.5rem"
+          class="alert error card-padded d-none"
+          role="alert"
         >
-          <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem">
+          <h2 class="text-lg mb-sm">
             This link is not valid
           </h2>
-          <p style="margin: 0">
+          <p class="m-0">
             Please check the web address or contact the tenant to provide a
             valid link.
           </p>
@@ -35,13 +35,13 @@
 
         <div
           id="link-expired-state"
-          class="alert error"
-          style="display: none; padding: 1.5rem"
+          class="alert error card-padded d-none"
+          role="alert"
         >
-          <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem">
+          <h2 class="text-lg mb-sm">
             This link has expired or was replaced. Ask the tenant for a new link
           </h2>
-          <p style="margin: 0">
+          <p class="m-0">
             Links expire automatically or when replaced by the tenant.
           </p>
         </div>
@@ -49,52 +49,22 @@
         <!-- Empty State -->
         <div
           id="empty-state"
-          class="card"
-          style="display: none; text-align: center; padding: 2rem"
+          class="card empty-state-card d-none"
         >
-          <p style="color: var(--text-muted); font-size: 1.1rem; margin: 0">
+          <p class="text-muted text-md m-0">
             The tenant has not submitted a record yet.
           </p>
         </div>
 
         <!-- Main Content -->
-        <div id="landlord-content" style="display: none">
-          <section class="card" style="margin-bottom: 2rem; padding: 1.5rem">
-            <div
-              style="
-                display: flex;
-                justify-content: space-between;
-                align-items: baseline;
-                flex-wrap: wrap;
-                gap: 0.5rem;
-              "
-            >
-              <h2 id="property-label" style="margin-bottom: 0.25rem"></h2>
-              <span
-                id="tenancy-status"
-                class="badge"
-                style="
-                  padding: 0.25rem 0.65rem;
-                  border-radius: 4px;
-                  font-size: 0.85rem;
-                  font-weight: 600;
-                  background: #e5e7eb;
-                  color: #374151;
-                "
-              ></span>
+        <div id="landlord-content" class="d-none">
+          <section class="card card-padded mb-lg">
+            <div class="flex-between-baseline">
+              <h2 id="property-label" class="mb-xs"></h2>
+              <span id="tenancy-status" class="badge"></span>
             </div>
-            <p
-              id="property-address"
-              style="color: var(--text-muted); margin-bottom: 1rem"
-            ></p>
-            <div
-              style="
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 1rem;
-                font-size: 0.95rem;
-              "
-            >
+            <p id="property-address" class="text-muted mb-1"></p>
+            <div class="settlement-grid text-base">
               <div><strong>Tenant:</strong> <span id="tenant-name"></span></div>
               <div>
                 <strong>Deposit:</strong> <span id="deposit-amount"></span>
@@ -112,123 +82,44 @@
           <!-- Settlement & Deductions Section (shown after move-out submitted) -->
           <div
             id="landlord-deductions-section"
-            style="display: none; margin-top: 2rem"
+            class="mt-xl d-none"
           >
             <!-- Settlement Totals Card -->
             <section
               id="landlord-totals-card"
-              class="card"
-              style="
-                margin-bottom: 2rem;
-                padding: 1.5rem;
-                border: 1px solid var(--border-color);
-                border-radius: 6px;
-                background: #f9fafb;
-              "
+              class="card card-padded card-light mb-lg"
             >
-              <h3 style="margin-bottom: 1rem">Deposit Settlement Summary</h3>
-              <div
-                style="
-                  display: grid;
-                  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-                  gap: 1rem;
-                  margin-bottom: 0.5rem;
-                "
-              >
+              <h3 class="mb-1">Deposit Settlement Summary</h3>
+              <div class="summary-grid mb-sm">
                 <div>
-                  <p
-                    style="
-                      font-size: 0.85rem;
-                      color: var(--text-muted);
-                      margin-bottom: 0.25rem;
-                    "
-                  >
+                  <p class="text-xs text-muted mb-xs">
                     Total Deposit
                   </p>
-                  <p
-                    id="landlord-total-deposit"
-                    style="font-size: 1.25rem; font-weight: 600; margin: 0"
-                  ></p>
+                  <p id="landlord-total-deposit" class="text-lg font-semibold m-0"></p>
                 </div>
                 <div>
-                  <p
-                    style="
-                      font-size: 0.85rem;
-                      color: var(--text-muted);
-                      margin-bottom: 0.25rem;
-                    "
-                  >
+                  <p class="text-xs text-muted mb-xs">
                     Accepted
                   </p>
-                  <p
-                    id="landlord-accepted-val"
-                    style="
-                      font-size: 1.25rem;
-                      font-weight: 600;
-                      color: #166534;
-                      margin: 0;
-                    "
-                  ></p>
+                  <p id="landlord-accepted-val" class="text-lg font-semibold text-success m-0"></p>
                 </div>
                 <div>
-                  <p
-                    style="
-                      font-size: 0.85rem;
-                      color: var(--text-muted);
-                      margin-bottom: 0.25rem;
-                    "
-                  >
+                  <p class="text-xs text-muted mb-xs">
                     Awaiting Response
                   </p>
-                  <p
-                    id="landlord-awaiting-val"
-                    style="
-                      font-size: 1.25rem;
-                      font-weight: 600;
-                      color: #92400e;
-                      margin: 0;
-                    "
-                  ></p>
+                  <p id="landlord-awaiting-val" class="text-lg font-semibold text-amber m-0"></p>
                 </div>
                 <div>
-                  <p
-                    style="
-                      font-size: 0.85rem;
-                      color: var(--text-muted);
-                      margin-bottom: 0.25rem;
-                    "
-                  >
+                  <p class="text-xs text-muted mb-xs">
                     Disputed
                   </p>
-                  <p
-                    id="landlord-disputed-val"
-                    style="
-                      font-size: 1.25rem;
-                      font-weight: 600;
-                      color: #991b1b;
-                      margin: 0;
-                    "
-                  ></p>
+                  <p id="landlord-disputed-val" class="text-lg font-semibold text-danger m-0"></p>
                 </div>
                 <div>
-                  <p
-                    style="
-                      font-size: 0.85rem;
-                      color: var(--text-muted);
-                      margin-bottom: 0.25rem;
-                    "
-                  >
+                  <p class="text-xs text-muted mb-xs">
                     Unclaimed Deposit
                   </p>
-                  <p
-                    id="landlord-unclaimed-val"
-                    style="
-                      font-size: 1.25rem;
-                      font-weight: 600;
-                      color: #2563eb;
-                      margin: 0;
-                    "
-                  ></p>
+                  <p id="landlord-unclaimed-val" class="text-lg font-semibold text-primary m-0"></p>
                 </div>
               </div>
             </section>
@@ -236,22 +127,10 @@
             <!-- Propose Deduction Form (shown when settling) -->
             <section
               id="propose-deduction-card"
-              class="card"
-              style="
-                margin-bottom: 2rem;
-                padding: 1.5rem;
-                border: 1px solid var(--border-color);
-                border-radius: 6px;
-              "
+              class="card card-padded mb-lg"
             >
-              <h3 style="margin-bottom: 0.5rem">Propose a Deduction</h3>
-              <p
-                style="
-                  font-size: 0.9rem;
-                  color: var(--text-muted);
-                  margin-bottom: 1.25rem;
-                "
-              >
+              <h3 class="mb-sm">Propose a Deduction</h3>
+              <p class="text-sm text-muted mb-1-25">
                 Propose a deduction against the tenant deposit. You may link it
                 to a move-out inspection item or propose an unlinked line. Note:
                 deduction lines cannot be edited once proposed; to alter an
@@ -260,8 +139,8 @@
 
               <div
                 id="deduction-form-error"
-                class="alert error"
-                style="display: none; margin-bottom: 1rem"
+                class="alert error mb-1 d-none"
+                role="alert"
               ></div>
 
               <form id="propose-deduction-form">
@@ -269,16 +148,7 @@
                   <label for="deduction-item-select"
                     >Linked Move-out Item</label
                   >
-                  <select
-                    id="deduction-item-select"
-                    style="
-                      width: 100%;
-                      padding: 0.625rem;
-                      border: 1px solid var(--border-color);
-                      border-radius: 4px;
-                      font-size: 1rem;
-                    "
-                  >
+                  <select id="deduction-item-select">
                     <option value="">Not linked to an item</option>
                   </select>
                 </div>
@@ -324,8 +194,7 @@
                 <button
                   id="propose-deduction-btn"
                   type="submit"
-                  class="btn btn-primary"
-                  style="width: auto"
+                  class="btn btn-primary w-auto"
                 >
                   Propose Deduction
                 </button>
@@ -333,30 +202,22 @@
             </section>
 
             <!-- Deduction Lines List -->
-            <section style="margin-bottom: 2rem">
-              <h3 style="margin-bottom: 1rem">Deduction Lines</h3>
+            <section class="mb-lg">
+              <h3 class="mb-1">Deduction Lines</h3>
               <div
                 id="landlord-empty-lines"
-                class="card"
-                style="display: none; text-align: center; padding: 1.5rem"
+                class="card card-padded text-center d-none"
               >
-                <p style="color: var(--text-muted); margin: 0">
+                <p class="text-muted m-0">
                   No deductions proposed yet.
                 </p>
               </div>
-              <div id="landlord-lines-container"></div>
+              <ul id="landlord-lines-container" class="semantic-list" role="list"></ul>
             </section>
           </div>
         </div>
       </main>
-      <footer
-        style="
-          margin-top: 3rem;
-          text-align: center;
-          color: var(--text-muted);
-          font-size: 0.85rem;
-        "
-      >
+      <footer class="footer-plain">
         <p>
           Handover records what the parties entered and acknowledged. It is not
           legal advice.

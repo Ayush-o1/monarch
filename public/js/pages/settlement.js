@@ -37,6 +37,18 @@ if (lightboxModal) {
   });
 }
 
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (lightboxModal && lightboxModal.classList.contains('active')) {
+      lightboxModal.classList.remove('active');
+      lightboxImg.src = '';
+    }
+    if (closeModal && closeModal.classList.contains('active')) {
+      closeModal.classList.remove('active');
+    }
+  }
+});
+
 function openLightbox(mediaUrl) {
   if (lightboxModal && lightboxImg) {
     lightboxImg.src = mediaUrl;
@@ -52,25 +64,25 @@ function getLinkedChangeBadge(linkedChange) {
   switch (linkedChange) {
     case 'worse':
       badge.className += ' badge-worse';
-      badge.textContent = 'Condition worse at move-out';
+      badge.textContent = '▼ Condition worse at move-out';
       break;
     case 'new_at_move_out':
       badge.className += ' badge-new';
-      badge.textContent = 'New item at move-out';
+      badge.textContent = '+ New item at move-out';
       break;
     case 'same':
       badge.className += ' badge-same';
-      badge.textContent = 'No change recorded';
+      badge.textContent = '= No change recorded';
       break;
     case 'better':
       badge.className += ' badge-better';
-      badge.textContent = 'Better at move-out';
+      badge.textContent = '▲ Better at move-out';
       break;
     case 'not_linked':
     default:
       badge.style.background = '#f3f4f6';
       badge.style.color = '#4b5563';
-      badge.textContent = 'Not linked to an item';
+      badge.textContent = '• Not linked to an item';
       break;
   }
   return badge;
@@ -88,22 +100,22 @@ function getStatusBadge(status) {
     case 'proposed':
       badge.style.background = '#fef3c7';
       badge.style.color = '#92400e';
-      badge.textContent = 'Awaiting response';
+      badge.textContent = '⏱ Awaiting response';
       break;
     case 'accepted':
       badge.style.background = '#dcfce7';
       badge.style.color = '#166534';
-      badge.textContent = 'Accepted';
+      badge.textContent = '✓ Accepted';
       break;
     case 'disputed':
       badge.style.background = '#fee2e2';
       badge.style.color = '#991b1b';
-      badge.textContent = 'Disputed';
+      badge.textContent = '✕ Disputed';
       break;
     case 'withdrawn':
       badge.style.background = '#f3f4f6';
-      badge.style.color = '#6b7280';
-      badge.textContent = 'Withdrawn';
+      badge.style.color = '#4b5563';
+      badge.textContent = '− Withdrawn';
       break;
     default:
       badge.style.background = '#e5e7eb';
@@ -115,8 +127,8 @@ function getStatusBadge(status) {
 }
 
 function renderDeductionLine(line, tenancyStatus, reloadFn) {
-  const card = document.createElement('div');
-  card.className = 'card';
+  const card = document.createElement('li');
+  card.className = 'card semantic-list-item';
   card.style.marginBottom = '1rem';
   card.style.padding = '1.25rem';
   card.style.border = '1px solid var(--border-color)';
@@ -201,7 +213,7 @@ function renderDeductionLine(line, tenancyStatus, reloadFn) {
       const inMediaId = line.photos.moveIn[0];
       const img = document.createElement('img');
       img.src = `/api/media/${encodeURIComponent(inMediaId)}/thumbnail`;
-      img.alt = 'Move-in condition';
+      img.alt = `Move-in photo for ${line.description}`;
       img.style.width = '64px';
       img.style.height = '64px';
       img.style.objectFit = 'cover';
@@ -227,7 +239,7 @@ function renderDeductionLine(line, tenancyStatus, reloadFn) {
       const outMediaId = line.photos.moveOut[0];
       const img = document.createElement('img');
       img.src = `/api/media/${encodeURIComponent(outMediaId)}/thumbnail`;
-      img.alt = 'Move-out condition';
+      img.alt = `Move-out photo for ${line.description}`;
       img.style.width = '64px';
       img.style.height = '64px';
       img.style.objectFit = 'cover';
@@ -332,20 +344,22 @@ function renderDeductionLine(line, tenancyStatus, reloadFn) {
       disputeForm.style.border = '1px solid #fecaca';
       disputeForm.style.borderRadius = '4px';
 
+      const noteInput = document.createElement('textarea');
+      noteInput.id = `dispute-note-${line.id}`;
+      noteInput.rows = 2;
+      noteInput.style.width = '100%';
+      noteInput.maxLength = 500;
+      noteInput.placeholder = 'Explain why you dispute this deduction...';
+      noteInput.style.marginBottom = '0.5rem';
+
       const noteLabel = document.createElement('label');
+      noteLabel.htmlFor = noteInput.id;
       noteLabel.style.display = 'block';
       noteLabel.style.marginBottom = '0.25rem';
       noteLabel.style.fontWeight = '600';
       noteLabel.style.fontSize = '0.85rem';
       noteLabel.textContent =
         'Reason for disputing (required, 1-500 characters)';
-
-      const noteInput = document.createElement('textarea');
-      noteInput.rows = 2;
-      noteInput.style.width = '100%';
-      noteInput.maxLength = 500;
-      noteInput.placeholder = 'Explain why you dispute this deduction...';
-      noteInput.style.marginBottom = '0.5rem';
 
       const submitDisputeBtn = document.createElement('button');
       submitDisputeBtn.type = 'button';

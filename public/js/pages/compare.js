@@ -24,6 +24,12 @@ if (lightbox) {
     lightbox.classList.remove('active');
     lightboxImg.src = '';
   });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && lightbox.classList.contains('active')) {
+      lightbox.classList.remove('active');
+      lightboxImg.src = '';
+    }
+  });
 }
 
 function openLightbox(url) {
@@ -40,15 +46,15 @@ function setElText(id, text) {
 function getConditionDisplay(condition) {
   switch (condition) {
     case 'good':
-      return { icon: '✓', label: 'Good', color: '#059669' };
+      return { icon: '✓', label: 'Good', color: '#166534' };
     case 'minor_wear':
-      return { icon: '⚠', label: 'Minor Wear', color: '#d97706' };
+      return { icon: '⚠', label: 'Minor Wear', color: '#92400e' };
     case 'damaged':
-      return { icon: '✕', label: 'Damaged', color: '#dc2626' };
+      return { icon: '✕', label: 'Damaged', color: '#b91c1c' };
     case 'missing':
-      return { icon: '⊘', label: 'Missing', color: '#6b7280' };
+      return { icon: '⊘', label: 'Missing', color: '#4b5563' };
     default:
-      return { icon: '•', label: 'Not specified', color: '#9ca3af' };
+      return { icon: '•', label: 'Not specified', color: '#4b5563' };
   }
 }
 
@@ -59,23 +65,23 @@ function getOutcomeBadge(outcome) {
   switch (outcome) {
     case 'worse':
       badge.className += ' badge-worse';
-      badge.textContent = 'WORSE';
+      badge.textContent = '▼ WORSE';
       break;
     case 'same':
       badge.className += ' badge-same';
-      badge.textContent = 'SAME';
+      badge.textContent = '= SAME';
       break;
     case 'better':
       badge.className += ' badge-better';
-      badge.textContent = 'BETTER';
+      badge.textContent = '▲ BETTER';
       break;
     case 'new_at_move_out':
       badge.className += ' badge-new';
-      badge.textContent = 'ADDED AT MOVE-OUT';
+      badge.textContent = '+ ADDED AT MOVE-OUT';
       break;
     case 'not_in_move_out':
       badge.className += ' badge-missing';
-      badge.textContent = 'NOT IN MOVE-OUT';
+      badge.textContent = '✕ NOT IN MOVE-OUT';
       break;
     default:
       badge.className += ' badge-same';
@@ -160,7 +166,7 @@ function renderInspectionColumn(title, itemData, getMediaUrl) {
 
       const img = document.createElement('img');
       img.src = mediaUrl;
-      img.alt = itemData.name;
+      img.alt = `${itemData.name} - ${title} photo`;
       img.loading = 'lazy';
       img.style.width = '100%';
       img.style.height = '100%';
@@ -178,8 +184,8 @@ function renderInspectionColumn(title, itemData, getMediaUrl) {
 }
 
 function renderItemRow(item, getMediaUrl) {
-  const card = document.createElement('div');
-  card.className = 'card';
+  const card = document.createElement('li');
+  card.className = 'card semantic-list-item';
   card.style.marginBottom = '1rem';
   card.style.padding = '1rem';
   card.style.border = '1px solid var(--border-color)';

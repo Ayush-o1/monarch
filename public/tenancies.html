@@ -9,67 +9,29 @@
   <body>
     <div class="container">
       <header>
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-          "
-        >
+        <div class="flex-between-baseline">
           <h1>Handover</h1>
-          <button
-            id="logout-btn"
-            style="
-              width: auto;
-              padding: 0.35rem 0.75rem;
-              min-height: 38px;
-              font-size: 0.875rem;
-            "
-          >
-            Log out
-          </button>
+          <button id="logout-btn" class="btn btn-sm">Log out</button>
         </div>
-        <p id="user-greeting" style="margin-top: 0.5rem"></p>
+        <p id="user-greeting" class="mt-sm"></p>
       </header>
       <main>
         <h2>Your Tenancies</h2>
         <div id="general-error" class="alert error" role="alert"></div>
         <p id="loading-state">Loading tenancies...</p>
 
-        <div id="tenancies-container" style="display: none">
-          <div
-            id="empty-state"
-            class="empty-state"
-            style="display: none; margin-bottom: 2rem"
-          >
+        <div id="tenancies-container" class="d-none">
+          <div id="empty-state" class="empty-state mb-lg d-none">
             <p>
               You have no tenancies yet. Create your first tenancy record below.
             </p>
           </div>
 
-          <div
-            id="tenancies-list"
-            class="tenancies-list"
-            style="margin-bottom: 2.5rem"
-          ></div>
+          <div id="tenancies-list" class="tenancies-list mb-xl"></div>
 
-          <section
-            class="card"
-            style="
-              border-top: 2px solid var(--border-color);
-              padding-top: 1.5rem;
-            "
-          >
+          <section class="card card-padded">
             <h3>Create New Tenancy</h3>
-            <p
-              style="
-                font-size: 0.9rem;
-                color: var(--text-muted);
-                margin-bottom: 1.25rem;
-              "
-            >
+            <p class="text-sm text-muted mb-1-25">
               Record your rental property and deposit amount to start the
               move-in inspection.
             </p>
@@ -85,7 +47,7 @@
                   required
                   maxlength="80"
                 />
-                <div id="propertyLabel-error" class="field-error"></div>
+                <div id="propertyLabel-error" class="field-error" role="alert"></div>
               </div>
               <div class="form-group">
                 <label for="address">Address (optional)</label>
@@ -95,7 +57,7 @@
                   name="address"
                   maxlength="300"
                 />
-                <div id="address-error" class="field-error"></div>
+                <div id="address-error" class="field-error" role="alert"></div>
               </div>
               <div class="form-group">
                 <label for="landlordName">Landlord Name (optional)</label>
@@ -105,7 +67,7 @@
                   name="landlordName"
                   maxlength="80"
                 />
-                <div id="landlordName-error" class="field-error"></div>
+                <div id="landlordName-error" class="field-error" role="alert"></div>
               </div>
               <div class="form-group">
                 <label for="depositRupees">Deposit Amount (₹ Rupees)</label>
@@ -116,7 +78,7 @@
                   placeholder="e.g. 50000 or 50,000"
                   required
                 />
-                <div id="depositRupees-error" class="field-error"></div>
+                <div id="depositRupees-error" class="field-error" role="alert"></div>
               </div>
               <div class="form-group">
                 <label for="refundWindowDays"
@@ -128,14 +90,14 @@
                   name="refundWindowDays"
                   placeholder="e.g. 30"
                 />
-                <div id="refundWindowDays-error" class="field-error"></div>
+                <div id="refundWindowDays-error" class="field-error" role="alert"></div>
               </div>
               <div class="form-group">
                 <label for="leaseStartDate">Lease Start Date (optional)</label>
                 <input type="date" id="leaseStartDate" name="leaseStartDate" />
-                <div id="leaseStartDate-error" class="field-error"></div>
+                <div id="leaseStartDate-error" class="field-error" role="alert"></div>
               </div>
-              <button type="submit" id="submit-btn" style="margin-top: 0.5rem">
+              <button type="submit" id="submit-btn" class="mt-sm">
                 Create Tenancy
               </button>
             </form>

@@ -9,15 +9,7 @@
   <body>
     <div class="container">
       <header>
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-          "
-        >
+        <div class="flex-between-baseline">
           <h1>Handover</h1>
           <p><a href="/tenancies.html">← All Tenancies</a></p>
         </div>
@@ -26,67 +18,32 @@
         <div id="general-error" class="alert error" role="alert"></div>
         <p id="loading-state">Loading tenancy record...</p>
 
-        <div id="tenancy-content" style="display: none">
-          <section style="margin-bottom: 2rem">
-            <div
-              style="
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                flex-wrap: wrap;
-                gap: 0.5rem;
-                margin-bottom: 0.5rem;
-              "
-            >
-              <h2 id="property-label" style="margin-bottom: 0"></h2>
-              <span
-                id="tenancy-status"
-                class="badge"
-                style="
-                  padding: 0.25rem 0.65rem;
-                  border-radius: 4px;
-                  font-size: 0.85rem;
-                  font-weight: 600;
-                  background: #e5e7eb;
-                  color: #374151;
-                "
-              ></span>
+        <div id="tenancy-content" class="d-none">
+          <section class="mb-lg">
+            <div class="flex-between flex-wrap gap-sm mb-sm">
+              <h2 id="property-label" class="mb-0"></h2>
+              <span id="tenancy-status" class="badge"></span>
             </div>
-            <div
-              id="tenancy-details"
-              style="
-                font-size: 0.95rem;
-                line-height: 1.6;
-                color: var(--text-color);
-              "
-            >
+            <div id="tenancy-details" class="text-base line-height-1-6 text-color">
               <p><strong>Deposit:</strong> <span id="deposit-amount"></span></p>
-              <p id="address-row" style="display: none">
+              <p id="address-row" class="d-none">
                 <strong>Address:</strong> <span id="address-val"></span>
               </p>
-              <p id="landlord-row" style="display: none">
+              <p id="landlord-row" class="d-none">
                 <strong>Landlord:</strong> <span id="landlord-val"></span>
               </p>
-              <p id="refund-row" style="display: none">
+              <p id="refund-row" class="d-none">
                 <strong>Agreed Refund Window:</strong>
                 <span id="refund-val"></span>
               </p>
-              <p id="lease-row" style="display: none">
+              <p id="lease-row" class="d-none">
                 <strong>Lease Start:</strong> <span id="lease-val"></span>
               </p>
-              <div
-                style="
-                  margin-top: 1rem;
-                  display: flex;
-                  align-items: baseline;
-                  gap: 0.75rem;
-                  flex-wrap: wrap;
-                "
-              >
-                <a id="download-pdf-link" href="#" style="font-weight: 500"
+              <div class="mt-1 flex-wrap gap-md">
+                <a id="download-pdf-link" href="#" class="font-medium"
                   >Download PDF report</a
                 >
-                <span style="font-size: 0.85rem; color: var(--text-muted)"
+                <span class="text-xs text-muted"
                   >The PDF includes up to 40 photos (items linked to deductions
                   or marked worse). Text in non-Latin scripts may appear as
                   question marks.</span
@@ -95,40 +52,18 @@
             </div>
           </section>
 
-          <section style="margin-bottom: 2.5rem">
-            <h3 style="margin-bottom: 1rem">Inspections</h3>
-            <div
-              style="
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-                gap: 1rem;
-              "
-            >
-              <div
-                id="move-in-card"
-                class="card"
-                style="
-                  border: 1px solid var(--border-color);
-                  border-radius: 6px;
-                  padding: 1rem;
-                "
-              >
-                <h4 style="margin-bottom: 0.5rem">Move-in Inspection</h4>
+          <section class="mb-xl">
+            <h3 class="mb-1">Inspections</h3>
+            <div class="inspections-grid">
+              <div id="move-in-card" class="card">
+                <h4 class="mb-sm">Move-in Inspection</h4>
                 <p>Status: <strong id="move-in-status"></strong></p>
-                <div id="move-in-action" style="margin-top: 0.75rem"></div>
+                <div id="move-in-action" class="mt-md"></div>
               </div>
-              <div
-                id="move-out-card"
-                class="card"
-                style="
-                  border: 1px solid var(--border-color);
-                  border-radius: 6px;
-                  padding: 1rem;
-                "
-              >
-                <h4 style="margin-bottom: 0.5rem">Move-out Inspection</h4>
+              <div id="move-out-card" class="card">
+                <h4 class="mb-sm">Move-out Inspection</h4>
                 <p>Status: <strong id="move-out-status">Not started</strong></p>
-                <div id="move-out-action" style="margin-top: 0.75rem"></div>
+                <div id="move-out-action" class="mt-md"></div>
               </div>
             </div>
           </section>
@@ -136,32 +71,14 @@
           <!-- Deposit Settlement Section (shown when settling or closed) -->
           <section
             id="settlement-section"
-            class="card"
-            style="
-              display: none;
-              margin-bottom: 2.5rem;
-              padding: 1.25rem;
-              border: 1px solid var(--border-color);
-              border-radius: 6px;
-              background: #f0fdf4;
-            "
+            class="card card-highlight mb-xl d-none"
           >
-            <div
-              style="
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                flex-wrap: wrap;
-                gap: 1rem;
-              "
-            >
+            <div class="flex-between flex-wrap gap-lg">
               <div>
-                <h3 style="margin-bottom: 0.25rem">
+                <h3 class="mb-xs">
                   Deposit Settlement &amp; Deductions
                 </h3>
-                <p
-                  style="margin: 0; font-size: 0.9rem; color: var(--text-muted)"
-                >
+                <p class="m-0 text-sm text-muted">
                   Review proposed deductions, accept or dispute lines, and track
                   deposit resolution.
                 </p>
@@ -169,115 +86,68 @@
               <a
                 id="settlement-link"
                 href="#"
-                class="btn btn-primary"
-                style="width: auto; text-decoration: none"
+                class="btn btn-primary w-auto"
               >
                 View Settlement →
               </a>
             </div>
           </section>
 
-          <section
-            id="share-section"
-            class="card"
-            style="
-              margin-bottom: 2.5rem;
-              padding: 1.25rem;
-              border: 1px solid var(--border-color);
-              border-radius: 6px;
-            "
-          >
-            <h3 style="margin-bottom: 0.75rem">Share with Landlord</h3>
-            <div id="share-status-container" style="margin-bottom: 1rem">
-              <p
-                id="share-status-text"
-                style="font-size: 0.95rem; margin-bottom: 0"
-              ></p>
+          <section id="share-section" class="card mb-xl">
+            <h3 class="mb-md">Share with Landlord</h3>
+            <div id="share-status-container" class="mb-1">
+              <p id="share-status-text" class="text-base mb-0"></p>
             </div>
 
             <!-- Single-view link banner -->
-            <div
-              id="new-link-container"
-              style="
-                display: none;
-                background: #ecfdf5;
-                border: 1px solid #10b981;
-                border-radius: 6px;
-                padding: 1rem;
-                margin-bottom: 1rem;
-              "
-            >
-              <p
-                style="font-weight: 600; color: #065f46; margin-bottom: 0.5rem"
-              >
+            <div id="new-link-container" class="banner-created mb-1 d-none">
+              <p class="font-semibold text-success mb-sm">
                 Landlord Review Link Created
               </p>
-              <div
-                style="
-                  display: flex;
-                  gap: 0.5rem;
-                  margin-bottom: 0.5rem;
-                  flex-wrap: wrap;
-                "
-              >
+              <div class="flex-wrap gap-sm mb-sm">
                 <input
                   id="new-link-input"
                   type="text"
                   readonly
-                  style="
-                    flex: 1;
-                    min-width: 260px;
-                    font-family: monospace;
-                    font-size: 0.85rem;
-                  "
+                  class="share-input"
                 />
                 <button
                   id="copy-link-btn"
                   type="button"
-                  class="btn"
-                  style="width: auto"
+                  class="btn w-auto"
                 >
                   Copy
                 </button>
               </div>
-              <p style="font-size: 0.85rem; color: #047857; margin: 0">
+              <p class="text-xs text-success m-0">
                 <em>This link is shown only once.</em> Active until
                 <span id="new-link-expiry"></span>.
               </p>
             </div>
 
-            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap">
+            <div class="flex-wrap gap-md">
               <button
                 id="create-link-btn"
                 type="button"
-                class="btn"
-                style="width: auto"
+                class="btn w-auto"
               >
                 Create Review Link
               </button>
               <button
                 id="revoke-link-btn"
                 type="button"
-                class="btn btn-secondary"
-                style="width: auto; display: none"
+                class="btn btn-secondary w-auto d-none"
               >
                 Revoke Link
               </button>
             </div>
           </section>
 
-          <section style="margin-bottom: 2rem">
-            <h3 style="margin-bottom: 1rem">Timeline (Append-Only Record)</h3>
-            <div
-              id="timeline-list"
-              style="
-                border-left: 2px solid var(--border-color);
-                padding-left: 1.25rem;
-                margin-left: 0.5rem;
-              "
-            ></div>
-            <div id="empty-timeline" style="display: none">
-              <p style="color: var(--text-muted)">No events recorded yet.</p>
+          <section class="mb-lg">
+            <h3 class="mb-1">Timeline (Append-Only Record)</h3>
+            <div id="timeline-list" class="timeline-container"></div>
+            <div id="empty-timeline" class="d-none">
+              <p class="text-muted">No events recorded yet.</p>
             </div>
           </section>
         </div>

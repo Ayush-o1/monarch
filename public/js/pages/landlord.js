@@ -17,18 +17,29 @@ function setElText(id, text) {
   if (el) el.textContent = text || '';
 }
 
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const lb = document.getElementById('lightbox');
+    if (lb && lb.classList.contains('active')) {
+      lb.classList.remove('active');
+      const img = document.getElementById('lightbox-img');
+      if (img) img.src = '';
+    }
+  }
+});
+
 function getConditionDisplay(condition) {
   switch (condition) {
     case 'good':
-      return { icon: '✓', label: 'Good', color: '#059669' };
+      return { icon: '✓', label: 'Good', color: '#166534' };
     case 'minor_wear':
-      return { icon: '⚠', label: 'Minor Wear', color: '#d97706' };
+      return { icon: '⚠', label: 'Minor Wear', color: '#92400e' };
     case 'damaged':
-      return { icon: '✕', label: 'Damaged', color: '#dc2626' };
+      return { icon: '✕', label: 'Damaged', color: '#b91c1c' };
     case 'missing':
-      return { icon: '⊘', label: 'Missing', color: '#6b7280' };
+      return { icon: '⊘', label: 'Missing', color: '#4b5563' };
     default:
-      return { icon: '•', label: 'Not specified', color: '#9ca3af' };
+      return { icon: '•', label: 'Not specified', color: '#4b5563' };
   }
 }
 
@@ -63,11 +74,12 @@ function renderInspection(insp, tenancyStatus) {
   if (insp.status === 'acknowledged') {
     badge.style.background = '#d1fae5';
     badge.style.color = '#065f46';
+    badge.textContent = '✓ ACKNOWLEDGED';
   } else {
     badge.style.background = '#fef3c7';
     badge.style.color = '#92400e';
+    badge.textContent = '⏱ SUBMITTED';
   }
-  badge.textContent = insp.status.toUpperCase();
 
   header.appendChild(title);
   header.appendChild(badge);
@@ -566,16 +578,16 @@ async function loadLandlordView() {
 function getChangeLabel(linkedChange) {
   switch (linkedChange) {
     case 'worse':
-      return 'Condition worse at move-out';
+      return '▼ Condition worse at move-out';
     case 'new_at_move_out':
-      return 'New item at move-out';
+      return '+ New item at move-out';
     case 'same':
-      return 'No change recorded';
+      return '= No change recorded';
     case 'better':
-      return 'Better at move-out';
+      return '▲ Better at move-out';
     case 'not_linked':
     default:
-      return 'Not linked to an item';
+      return '• Not linked to an item';
   }
 }
 
@@ -591,22 +603,22 @@ function getStatusBadge(status) {
     case 'proposed':
       badge.style.background = '#fef3c7';
       badge.style.color = '#92400e';
-      badge.textContent = 'Awaiting response';
+      badge.textContent = '⏱ Awaiting response';
       break;
     case 'accepted':
       badge.style.background = '#dcfce7';
       badge.style.color = '#166534';
-      badge.textContent = 'Accepted';
+      badge.textContent = '✓ Accepted';
       break;
     case 'disputed':
       badge.style.background = '#fee2e2';
       badge.style.color = '#991b1b';
-      badge.textContent = 'Disputed';
+      badge.textContent = '✕ Disputed';
       break;
     case 'withdrawn':
       badge.style.background = '#f3f4f6';
-      badge.style.color = '#6b7280';
-      badge.textContent = 'Withdrawn';
+      badge.style.color = '#4b5563';
+      badge.textContent = '− Withdrawn';
       break;
     default:
       badge.style.background = '#e5e7eb';
@@ -618,8 +630,8 @@ function getStatusBadge(status) {
 }
 
 function renderLandlordDeductionLine(line, tenancyStatus, reloadFn) {
-  const card = document.createElement('div');
-  card.className = 'card';
+  const card = document.createElement('li');
+  card.className = 'card semantic-list-item';
   card.style.marginBottom = '1rem';
   card.style.padding = '1.25rem';
   card.style.border = '1px solid var(--border-color)';

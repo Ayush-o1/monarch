@@ -9,15 +9,7 @@
   <body>
     <div class="container">
       <header>
-        <div
-          style="
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-          "
-        >
+        <div class="flex-between-baseline">
           <h1>Handover</h1>
           <p><a id="back-link" href="/tenancies.html">← Back</a></p>
         </div>
@@ -26,55 +18,20 @@
         <div id="general-error" class="alert error" role="alert"></div>
         <p id="loading-state">Loading inspection...</p>
 
-        <div id="inspection-content" style="display: none">
-          <section style="margin-bottom: 1.5rem">
-            <div
-              style="
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                flex-wrap: wrap;
-                gap: 0.5rem;
-              "
-            >
+        <div id="inspection-content" class="d-none">
+          <section class="mb-1-5">
+            <div class="flex-between flex-wrap gap-sm">
               <div>
-                <h2 id="inspection-title" style="margin-bottom: 0.25rem"></h2>
-                <p
-                  id="inspection-property"
-                  style="
-                    color: var(--text-muted);
-                    font-size: 0.95rem;
-                    margin-bottom: 0;
-                  "
-                ></p>
+                <h2 id="inspection-title" class="mb-xs"></h2>
+                <p id="inspection-property" class="text-muted text-base mb-0"></p>
               </div>
-              <span
-                id="inspection-status"
-                class="badge"
-                style="
-                  padding: 0.25rem 0.65rem;
-                  border-radius: 4px;
-                  font-size: 0.85rem;
-                  font-weight: 600;
-                  background: #e5e7eb;
-                  color: #374151;
-                "
-              ></span>
+              <span id="inspection-status" class="badge"></span>
             </div>
           </section>
 
           <div
             id="locked-banner"
-            class="alert"
-            style="
-              display: none;
-              background: #fef3c7;
-              border: 1px solid #f59e0b;
-              color: #92400e;
-              margin-bottom: 1.5rem;
-              padding: 0.75rem 1rem;
-              border-radius: 4px;
-            "
+            class="alert alert-warning mb-1-5 d-none"
           >
             This inspection has been submitted and is locked for editing.
             Records are read-only.
@@ -82,90 +39,36 @@
 
           <div
             id="change-request-banner"
-            class="alert"
-            style="
-              display: none;
-              background: #fef2f2;
-              border: 1px solid #ef4444;
-              color: #991b1b;
-              margin-bottom: 1.5rem;
-              padding: 0.75rem 1rem;
-              border-radius: 4px;
-            "
+            class="alert error mb-1-5 d-none"
+            role="alert"
           >
             <strong>
               Changes requested by
               <span id="change-request-by">Landlord</span> on
               <span id="change-request-at"></span>:
             </strong>
-            <p
-              id="change-request-note"
-              style="margin: 0.5rem 0 0; white-space: pre-wrap"
-            ></p>
+            <p id="change-request-note" class="mt-sm mb-0"></p>
           </div>
 
-          <section
-            id="quick-add-section"
-            class="card"
-            style="
-              margin-bottom: 2rem;
-              padding: 1.25rem;
-              border: 1px solid var(--border-color);
-              border-radius: 6px;
-              background: #f9fafb;
-            "
-          >
-            <h3 style="font-size: 1.05rem; margin-bottom: 0.5rem">
+          <section id="quick-add-section" class="card card-light mb-lg">
+            <h3 class="text-md mb-sm">
               Quick Add Common Items
             </h3>
-            <p
-              style="
-                font-size: 0.875rem;
-                color: var(--text-muted);
-                margin-bottom: 0.75rem;
-              "
-            >
+            <p class="text-sm text-muted mb-md">
               Click a room below to automatically add standard inventory items.
               Existing items are preserved.
             </p>
-            <div
-              id="quick-add-buttons"
-              style="display: flex; flex-wrap: wrap; gap: 0.5rem"
-            ></div>
-            <p
-              id="quick-add-status"
-              style="
-                font-size: 0.85rem;
-                color: var(--text-muted);
-                margin-top: 0.5rem;
-                display: none;
-              "
-            ></p>
+            <div id="quick-add-buttons" class="flex-wrap gap-sm"></div>
+            <p id="quick-add-status" class="text-xs text-muted mt-sm d-none" aria-live="polite"></p>
           </section>
 
-          <section
-            id="add-item-section"
-            class="card"
-            style="
-              margin-bottom: 2rem;
-              padding: 1.25rem;
-              border: 1px solid var(--border-color);
-              border-radius: 6px;
-            "
-          >
-            <h3 style="font-size: 1.05rem; margin-bottom: 1rem">
+          <section id="add-item-section" class="card mb-lg">
+            <h3 class="text-md mb-1">
               Add Individual Item
             </h3>
             <form id="add-item-form" novalidate>
-              <div
-                style="
-                  display: grid;
-                  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-                  gap: 1rem;
-                  margin-bottom: 1rem;
-                "
-              >
-                <div class="form-group" style="margin-bottom: 0">
+              <div class="form-grid-2 mb-1">
+                <div class="form-group mb-0">
                   <label for="room-input">Room Name *</label>
                   <input
                     type="text"
@@ -175,9 +78,9 @@
                     required
                     maxlength="80"
                   />
-                  <div id="room-error" class="field-error"></div>
+                  <div id="room-error" class="field-error" role="alert"></div>
                 </div>
-                <div class="form-group" style="margin-bottom: 0">
+                <div class="form-group mb-0">
                   <label for="name-input">Item Name *</label>
                   <input
                     type="text"
@@ -187,31 +90,15 @@
                     required
                     maxlength="80"
                   />
-                  <div id="name-error" class="field-error"></div>
+                  <div id="name-error" class="field-error" role="alert"></div>
                 </div>
               </div>
-              <div
-                style="
-                  display: grid;
-                  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-                  gap: 1rem;
-                  margin-bottom: 1rem;
-                "
-              >
-                <div class="form-group" style="margin-bottom: 0">
+              <div class="form-grid-2 mb-1">
+                <div class="form-group mb-0">
                   <label for="condition-input">Condition</label>
                   <select
                     id="condition-input"
                     name="condition"
-                    style="
-                      width: 100%;
-                      padding: 0.625rem 0.75rem;
-                      font-size: 1rem;
-                      border: 1px solid var(--border-color);
-                      border-radius: 4px;
-                      min-height: 44px;
-                      background: white;
-                    "
                   >
                     <option value="">-- Select condition (optional) --</option>
                     <option value="good">Good</option>
@@ -219,9 +106,9 @@
                     <option value="damaged">Damaged</option>
                     <option value="missing">Missing</option>
                   </select>
-                  <div id="condition-error" class="field-error"></div>
+                  <div id="condition-error" class="field-error" role="alert"></div>
                 </div>
-                <div class="form-group" style="margin-bottom: 0">
+                <div class="form-group mb-0">
                   <label for="note-input">Note / Remarks (optional)</label>
                   <input
                     type="text"
@@ -230,45 +117,25 @@
                     placeholder="e.g. Minor chip on bottom edge"
                     maxlength="1000"
                   />
-                  <div id="note-error" class="field-error"></div>
+                  <div id="note-error" class="field-error" role="alert"></div>
                 </div>
               </div>
-              <button type="submit" id="add-item-btn" style="max-width: 180px">
+              <button type="submit" id="add-item-btn" class="max-w-180">
                 + Add Item
               </button>
             </form>
           </section>
 
           <section>
-            <div
-              style="
-                display: flex;
-                justify-content: space-between;
-                align-items: baseline;
-                margin-bottom: 1rem;
-              "
-            >
+            <div class="flex-between-baseline mb-1">
               <h3>
                 Inspection Inventory (<span id="total-items-count">0</span>)
               </h3>
-              <span
-                id="save-status-global"
-                style="font-size: 0.875rem; color: var(--text-muted)"
-              ></span>
+              <span id="save-status-global" class="text-sm text-muted"></span>
             </div>
 
-            <div
-              id="empty-items-state"
-              class="empty-state"
-              style="
-                display: none;
-                padding: 2rem;
-                text-align: center;
-                border: 1px dashed var(--border-color);
-                border-radius: 6px;
-              "
-            >
-              <p style="color: var(--text-muted); margin-bottom: 0">
+            <div id="empty-items-state" class="empty-state-dashed">
+              <p class="text-muted mb-0">
                 No items added yet. Use Quick Add or the form above to record
                 items.
               </p>

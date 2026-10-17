@@ -279,7 +279,7 @@ function renderItems(inspection) {
           const deletePhotoBtn = document.createElement('button');
           deletePhotoBtn.type = 'button';
           deletePhotoBtn.className = 'thumbnail-delete-btn';
-          deletePhotoBtn.innerHTML = '&times;';
+          deletePhotoBtn.textContent = '×';
           deletePhotoBtn.title = 'Delete photo';
           deletePhotoBtn.setAttribute(
             'aria-label',
