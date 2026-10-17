@@ -31,6 +31,7 @@ export function createApp({
   maxUploadMb,
   sessionStore,
   sessionSecret = config.sessionSecret,
+  reportCompress = true,
 } = {}) {
   const app = express();
   const isProduction = process.env.NODE_ENV === 'production';
@@ -110,7 +111,10 @@ export function createApp({
   app.use('/api/tenancies', createTenanciesRouter({ pool }));
 
   // Report routes
-  app.use('/api/tenancies', createReportRouter({ pool, storage }));
+  app.use(
+    '/api/tenancies',
+    createReportRouter({ pool, storage, reportCompress })
+  );
 
   // Inspections and items routes
   app.use(createItemsRouter({ pool, storage }));

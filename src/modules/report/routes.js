@@ -12,7 +12,11 @@ import { createReport } from './pdf.js';
  * @param {object} [options.storage]
  * @returns {express.Router}
  */
-export function createReportRouter({ pool, storage } = {}) {
+export function createReportRouter({
+  pool,
+  storage,
+  reportCompress = true,
+} = {}) {
   const router = express.Router();
 
   router.use(requireUser);
@@ -34,8 +38,7 @@ export function createReportRouter({ pool, storage } = {}) {
       const filename = `handover-${slug}-${yyyy}-${mm}-${dd}.pdf`;
 
       // 3. Render PDF document
-      const compress = req.query.compress !== 'false';
-      const doc = createReport(data, { compress });
+      const doc = createReport(data, { compress: reportCompress });
 
       // 4. Set headers
       res.setHeader('Content-Type', 'application/pdf');

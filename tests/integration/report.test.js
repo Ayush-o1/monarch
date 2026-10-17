@@ -25,6 +25,7 @@ describe('Handover PDF Report API (Phase 9)', () => {
     app = createApp({
       pool,
       storage,
+      reportCompress: false,
       authLimiter: (_req, _res, next) => next(),
       mediaLimiter: (_req, _res, next) => next(),
     });
@@ -238,11 +239,8 @@ describe('Handover PDF Report API (Phase 9)', () => {
     const allStorageKeys = mediaRows.rows.map((r) => r.storage_key);
     assert.ok(allStorageKeys.length >= 3, 'Should have at least 3 photos');
 
-    // 8. Request PDF with compress=false
-    const res = await getPdf(
-      agent,
-      `/api/tenancies/${tenancyId}/report.pdf?compress=false`
-    );
+    // 8. Request PDF
+    const res = await getPdf(agent, `/api/tenancies/${tenancyId}/report.pdf`);
     assert.equal(res.status, 200);
     assert.equal(res.headers['content-type'], 'application/pdf');
 
@@ -331,10 +329,7 @@ describe('Handover PDF Report API (Phase 9)', () => {
 
     const tenancyId = tenancyRes.body.id;
 
-    const res = await getPdf(
-      agent,
-      `/api/tenancies/${tenancyId}/report.pdf?compress=false`
-    );
+    const res = await getPdf(agent, `/api/tenancies/${tenancyId}/report.pdf`);
     assert.equal(res.status, 200);
 
     const bodyStr = extractPdfText(res.body);
@@ -405,10 +400,7 @@ describe('Handover PDF Report API (Phase 9)', () => {
       fs.rmSync(tenancyUploadFolder, { recursive: true, force: true });
     }
 
-    const res = await getPdf(
-      agent,
-      `/api/tenancies/${tenancyId}/report.pdf?compress=false`
-    );
+    const res = await getPdf(agent, `/api/tenancies/${tenancyId}/report.pdf`);
     assert.equal(res.status, 200);
 
     const bodyStr = extractPdfText(res.body);
@@ -494,10 +486,7 @@ describe('Handover PDF Report API (Phase 9)', () => {
       [moveOutId]
     );
 
-    const res = await getPdf(
-      agent,
-      `/api/tenancies/${tenancyId}/report.pdf?compress=false`
-    );
+    const res = await getPdf(agent, `/api/tenancies/${tenancyId}/report.pdf`);
     assert.equal(res.status, 200);
 
     const bodyStr = extractPdfText(res.body);
@@ -634,5 +623,48 @@ describe('Handover PDF Report API (Phase 9)', () => {
     assert.equal(res.status, 200);
     assert.equal(res.headers['cache-control'], 'private, no-store');
     assert.equal(res.headers['x-content-type-options'], 'nosniff');
+  });
+
+  it('GET report.pdf?compress=false on a default app returns a compressed PDF (the footer sentence does not appear in the plain bytes) and still returns 200', async () => {
+    const defaultApp = createApp({
+      pool,
+      storage,
+      authLimiter: (_req, _res, next) => next(),
+      mediaLimiter: (_req, _res, next) => next(),
+    });
+    const defaultAgent = request.agent(defaultApp);
+    const email = randomEmail();
+    await defaultAgent
+      .post('/api/auth/register')
+      .send({
+        name: 'Default Compress Tenant',
+        email,
+        password: 'password1234',
+      })
+      .expect(201);
+
+    const tenancyRes = await defaultAgent
+      .post('/api/tenancies')
+      .send({
+        property_label: 'Default Compress Test Flat',
+        deposit_paise: 5000000,
+        refund_window_days: 14,
+      })
+      .expect(201);
+
+    const tenancyId = tenancyRes.body.id;
+    const res = await getPdf(
+      defaultAgent,
+      `/api/tenancies/${tenancyId}/report.pdf?compress=false`
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers['content-type'], 'application/pdf');
+    const rawBytes = res.body.toString('latin1');
+    assert.ok(
+      !rawBytes.includes(
+        'Handover records what the parties entered and acknowledged. It is not legal advice.'
+      ),
+      'Footer sentence must not appear in the plain bytes of compressed PDF'
+    );
   });
 });
