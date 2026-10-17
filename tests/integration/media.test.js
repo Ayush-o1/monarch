@@ -7,7 +7,7 @@ import crypto from 'node:crypto';
 import request from 'supertest';
 import sharp from 'sharp';
 import { createApp } from '../../src/app.js';
-import { pool, ensureTestDb } from '../helpers/db.js';
+import { pool, ownerPool, ensureTestDb } from '../helpers/db.js';
 import { LocalStorage } from '../../src/lib/storage/local.js';
 
 describe('Media API, Storage, and Trigger Locking', () => {
@@ -33,6 +33,7 @@ describe('Media API, Storage, and Trigger Locking', () => {
 
   after(async () => {
     await pool.end();
+    await ownerPool.end();
     if (tmpUploadDir && fs.existsSync(tmpUploadDir)) {
       fs.rmSync(tmpUploadDir, { recursive: true, force: true });
     }
@@ -472,7 +473,7 @@ describe('Media API, Storage, and Trigger Locking', () => {
     const mediaId = uploadRes.body.id;
 
     // Set inspection to submitted via raw SQL
-    await pool.query(
+    await ownerPool.query(
       `UPDATE inspections SET status = 'submitted' WHERE id = $1`,
       [inspectionId]
     );
@@ -492,7 +493,7 @@ describe('Media API, Storage, and Trigger Locking', () => {
 
     // 3. Raw SQL INSERT fails with LOCKED:
     await assert.rejects(async () => {
-      await pool.query(
+      await ownerPool.query(
         `INSERT INTO media (item_id, storage_key, sha256, mime, size_bytes)
          VALUES ($1, 'raw_sql_key', $2, 'image/jpeg', 100)`,
         [itemId, crypto.randomBytes(32).toString('hex')]
@@ -501,20 +502,21 @@ describe('Media API, Storage, and Trigger Locking', () => {
 
     // 4. Raw SQL UPDATE fails with LOCKED:
     await assert.rejects(async () => {
-      await pool.query(`UPDATE media SET size_bytes = 200 WHERE id = $1`, [
+      await ownerPool.query(`UPDATE media SET size_bytes = 200 WHERE id = $1`, [
         mediaId,
       ]);
     }, /LOCKED: parent inspection is not in draft status/);
 
     // 5. Raw SQL DELETE fails with LOCKED:
     await assert.rejects(async () => {
-      await pool.query(`DELETE FROM media WHERE id = $1`, [mediaId]);
+      await ownerPool.query(`DELETE FROM media WHERE id = $1`, [mediaId]);
     }, /LOCKED: parent inspection is not in draft status/);
 
     // Restore inspection to draft
-    await pool.query(`UPDATE inspections SET status = 'draft' WHERE id = $1`, [
-      inspectionId,
-    ]);
+    await ownerPool.query(
+      `UPDATE inspections SET status = 'draft' WHERE id = $1`,
+      [inspectionId]
+    );
 
     // 6. Raw SQL update of item_id fails with immutable
     const { itemId: otherItemId } = await createTenancyWithItem(
@@ -523,7 +525,7 @@ describe('Media API, Storage, and Trigger Locking', () => {
       'Sink'
     );
     await assert.rejects(async () => {
-      await pool.query(`UPDATE media SET item_id = $1 WHERE id = $2`, [
+      await ownerPool.query(`UPDATE media SET item_id = $1 WHERE id = $2`, [
         otherItemId,
         mediaId,
       ]);

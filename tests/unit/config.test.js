@@ -127,4 +127,24 @@ describe('Config validation', () => {
       /PUBLIC_BASE_URL must be a valid URL/i
     );
   });
+
+  it('validates APP_DB_USER format matching /^[a-z_][a-z0-9_]{0,62}$/', () => {
+    const valid = loadConfig({
+      ...validBaseEnv,
+      APP_DB_USER: 'monarch_app',
+    });
+    assert.equal(valid.appDbUser, 'monarch_app');
+
+    for (const bad of [
+      '123startwithnum',
+      'UPPERCASE',
+      'bad-hyphen',
+      'a'.repeat(64),
+    ]) {
+      assert.throws(
+        () => loadConfig({ ...validBaseEnv, APP_DB_USER: bad }),
+        /APP_DB_USER must match/i
+      );
+    }
+  });
 });

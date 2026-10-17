@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { pool, ensureTestDb } from '../helpers/db.js';
+import { pool, ownerPool, ensureTestDb } from '../helpers/db.js';
 import { migrate } from '../../src/db/migrate.js';
 
 describe('Database and Migrations', () => {
@@ -14,10 +14,11 @@ describe('Database and Migrations', () => {
 
   after(async () => {
     await pool.end();
+    await ownerPool.end();
   });
 
   it('running migrate when up to date applies 0 migrations', async () => {
-    const result = await migrate({ pool });
+    const result = await migrate({ pool: ownerPool });
     assert.equal(result.appliedCount, 0);
   });
 
@@ -93,7 +94,7 @@ describe('Database and Migrations', () => {
       await fs.writeFile(tamperedFile, '-- tampered content\nSELECT 1;');
 
       await assert.rejects(async () => {
-        await migrate({ pool, migrationsDir: tmpDir });
+        await migrate({ pool: ownerPool, migrationsDir: tmpDir });
       }, /Migration checksum mismatch for 001_users_sessions\.sql/i);
     } finally {
       await fs.rm(tmpDir, { recursive: true, force: true });

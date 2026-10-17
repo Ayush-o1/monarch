@@ -32,6 +32,17 @@ export function loadConfig(env = process.env) {
     );
   }
 
+  const migrateDatabaseUrl = isTest
+    ? env.TEST_MIGRATE_DATABASE_URL || env.MIGRATE_DATABASE_URL
+    : env.MIGRATE_DATABASE_URL;
+
+  const appDbUser = env.APP_DB_USER || 'monarch_app';
+  if (!/^[a-z_][a-z0-9_]{0,62}$/.test(appDbUser)) {
+    throw new Error(
+      'Config validation error: APP_DB_USER must match /^[a-z_][a-z0-9_]{0,62}$/'
+    );
+  }
+
   const port = parseInt(env.PORT || '3000', 10);
   if (Number.isNaN(port) || port <= 0) {
     throw new Error(
@@ -71,6 +82,8 @@ export function loadConfig(env = process.env) {
     isTest,
     port,
     databaseUrl,
+    migrateDatabaseUrl,
+    appDbUser,
     sessionSecret,
     cookieSecure,
     uploadDir,

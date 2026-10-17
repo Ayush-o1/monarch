@@ -2,7 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { pool as defaultPool } from './pool.js';
+import pg from 'pg';
+import { applyAppRoleGrants } from './roles.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,10 +14,30 @@ function computeChecksum(content) {
 }
 
 export async function migrate({
-  pool = defaultPool,
+  pool,
   migrationsDir = DEFAULT_MIGRATIONS_DIR,
 } = {}) {
-  const client = await pool.connect();
+  let clientPool = pool;
+  let shouldClosePool = false;
+
+  if (!clientPool) {
+    const isTest = process.env.NODE_ENV === 'test';
+    const migrateUrl = isTest
+      ? process.env.TEST_MIGRATE_DATABASE_URL ||
+        process.env.MIGRATE_DATABASE_URL
+      : process.env.MIGRATE_DATABASE_URL;
+
+    if (!migrateUrl) {
+      throw new Error(
+        'MIGRATE_DATABASE_URL is required for database migrations'
+      );
+    }
+
+    clientPool = new pg.Pool({ connectionString: migrateUrl });
+    shouldClosePool = true;
+  }
+
+  const client = await clientPool.connect();
 
   try {
     // Ensure migrations table exists
@@ -82,9 +103,21 @@ export async function migrate({
       console.log(`Successfully applied ${appliedCount} migration(s).`);
     }
 
+    // Call applyAppRoleGrants whenever APP_DB_PASSWORD is set
+    if (process.env.APP_DB_PASSWORD) {
+      const role = process.env.APP_DB_USER || 'monarch_app';
+      const password = process.env.APP_DB_PASSWORD;
+      const dbRes = await client.query('SELECT current_database() AS db_name');
+      const dbName = dbRes.rows[0].db_name;
+      await applyAppRoleGrants(clientPool, { dbName, role, password });
+    }
+
     return { appliedCount };
   } finally {
     client.release();
+    if (shouldClosePool) {
+      await clientPool.end();
+    }
   }
 }
 
@@ -94,13 +127,11 @@ const isMain =
 
 if (isMain) {
   migrate()
-    .then(async () => {
-      await defaultPool.end();
+    .then(() => {
       process.exit(0);
     })
-    .catch(async (err) => {
+    .catch((err) => {
       console.error('Migration failed:', err.message);
-      await defaultPool.end().catch(() => {});
       process.exit(1);
     });
 }

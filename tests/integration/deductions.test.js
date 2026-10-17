@@ -2,7 +2,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import { createApp } from '../../src/app.js';
-import { pool, ensureTestDb } from '../helpers/db.js';
+import { pool, ownerPool, ensureTestDb } from '../helpers/db.js';
 import { LocalStorage } from '../../src/lib/storage/local.js';
 import os from 'node:os';
 import path from 'node:path';
@@ -31,6 +31,7 @@ describe('Deductions, Settlement, and Tenancy Close (Phase 8)', () => {
 
   after(async () => {
     await pool.end();
+    await ownerPool.end();
     if (tmpUploadDir && fs.existsSync(tmpUploadDir)) {
       fs.rmSync(tmpUploadDir, { recursive: true, force: true });
     }
@@ -392,7 +393,7 @@ describe('Deductions, Settlement, and Tenancy Close (Phase 8)', () => {
     // 1. Direct SQL insert exceeding deposit is blocked by deduction_cap_guard
     await assert.rejects(
       () =>
-        pool.query(
+        ownerPool.query(
           `INSERT INTO deduction_lines (tenancy_id, description, amount_paise, created_by_name)
            VALUES ($1, 'Direct insert', 40001, 'Attacker')`,
           [tenancyId]
@@ -404,7 +405,7 @@ describe('Deductions, Settlement, and Tenancy Close (Phase 8)', () => {
     );
 
     // Insert valid line directly
-    const insRes = await pool.query(
+    const insRes = await ownerPool.query(
       `INSERT INTO deduction_lines (tenancy_id, item_id, description, amount_paise, created_by_name)
        VALUES ($1, $2, 'Valid line', 10000, 'Landlord')
        RETURNING id`,
@@ -415,7 +416,7 @@ describe('Deductions, Settlement, and Tenancy Close (Phase 8)', () => {
     // 2. Guard rejects updating amount_paise
     await assert.rejects(
       () =>
-        pool.query(
+        ownerPool.query(
           `UPDATE deduction_lines SET amount_paise = 15000 WHERE id = $1`,
           [lineId]
         ),
@@ -428,7 +429,7 @@ describe('Deductions, Settlement, and Tenancy Close (Phase 8)', () => {
     // 3. Guard rejects updating description
     await assert.rejects(
       () =>
-        pool.query(
+        ownerPool.query(
           `UPDATE deduction_lines SET description = 'Changed' WHERE id = $1`,
           [lineId]
         ),
@@ -441,9 +442,10 @@ describe('Deductions, Settlement, and Tenancy Close (Phase 8)', () => {
     // 4. Guard rejects updating item_id
     await assert.rejects(
       () =>
-        pool.query(`UPDATE deduction_lines SET item_id = null WHERE id = $1`, [
-          lineId,
-        ]),
+        ownerPool.query(
+          `UPDATE deduction_lines SET item_id = null WHERE id = $1`,
+          [lineId]
+        ),
       (err) => {
         assert.match(err.message, /ILLEGAL: item_id is immutable/);
         return true;
@@ -451,7 +453,7 @@ describe('Deductions, Settlement, and Tenancy Close (Phase 8)', () => {
     );
 
     // 5. Guard rejects illegal transitions: set status to accepted first
-    await pool.query(
+    await ownerPool.query(
       `UPDATE deduction_lines SET status = 'accepted' WHERE id = $1`,
       [lineId]
     );
@@ -459,7 +461,7 @@ describe('Deductions, Settlement, and Tenancy Close (Phase 8)', () => {
     // Accepted -> withdrawn fails
     await assert.rejects(
       () =>
-        pool.query(
+        ownerPool.query(
           `UPDATE deduction_lines SET status = 'withdrawn' WHERE id = $1`,
           [lineId]
         ),
@@ -472,7 +474,7 @@ describe('Deductions, Settlement, and Tenancy Close (Phase 8)', () => {
     // Accepted -> disputed fails
     await assert.rejects(
       () =>
-        pool.query(
+        ownerPool.query(
           `UPDATE deduction_lines SET status = 'disputed' WHERE id = $1`,
           [lineId]
         ),
@@ -501,7 +503,7 @@ describe('Deductions, Settlement, and Tenancy Close (Phase 8)', () => {
       .expect(201);
 
     // Direct insert of a withdrawn line for 5000 (withdrawn lines are allowed past the cap)
-    const insRes = await pool.query(
+    const insRes = await ownerPool.query(
       `INSERT INTO deduction_lines (tenancy_id, description, amount_paise, created_by_name, status)
        VALUES ($1, 'Withdrawn line', 5000, 'L', 'withdrawn')
        RETURNING id`,
@@ -514,7 +516,7 @@ describe('Deductions, Settlement, and Tenancy Close (Phase 8)', () => {
     // and throws ILLEGAL: (mapping to 409 INVALID_STATE), not CAP: (422).
     await assert.rejects(
       () =>
-        pool.query(
+        ownerPool.query(
           `UPDATE deduction_lines SET status = 'proposed' WHERE id = $1`,
           [withdrawnLineId]
         ),

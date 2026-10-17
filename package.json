@@ -8,6 +8,8 @@
     "start": "node --env-file=.env src/server.js",
     "migrate": "node --env-file=.env src/db/migrate.js",
     "migrate:test": "NODE_ENV=test node --env-file=.env src/db/migrate.js",
+    "db:roles": "node --env-file=.env src/db/roles.js",
+    "db:roles:test": "NODE_ENV=test node --env-file=.env src/db/roles.js",
     "test": "NODE_ENV=test node --env-file=.env --test --test-concurrency=1 'tests/**/*.test.js'",
     "lint": "eslint .",
     "format": "prettier --write .",

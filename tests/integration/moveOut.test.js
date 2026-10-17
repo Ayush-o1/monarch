@@ -2,7 +2,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import { createApp } from '../../src/app.js';
-import { pool, ensureTestDb } from '../helpers/db.js';
+import { pool, ownerPool, ensureTestDb } from '../helpers/db.js';
 import { LocalStorage } from '../../src/lib/storage/local.js';
 import os from 'node:os';
 import path from 'node:path';
@@ -31,6 +31,7 @@ describe('Move-out Lifecycle, Comparison Engine, and Landlord Review (Phase 7)',
 
   after(async () => {
     await pool.end();
+    await ownerPool.end();
     if (tmpUploadDir && fs.existsSync(tmpUploadDir)) {
       fs.rmSync(tmpUploadDir, { recursive: true, force: true });
     }
@@ -485,7 +486,7 @@ describe('Move-out Lifecycle, Comparison Engine, and Landlord Review (Phase 7)',
     // 5. Raw SQL insert on inspection_items rejected by trigger
     await assert.rejects(
       () =>
-        pool.query(
+        ownerPool.query(
           `INSERT INTO inspection_items (inspection_id, room, name, condition)
            VALUES ($1, 'Kitchen', 'Toaster', 'good')`,
           [moveOutId]
