@@ -283,13 +283,50 @@ All errors follow:
 - `POST /api/landlord/:token/deductions`
 - `POST /api/landlord/:token/deductions/:id/withdraw`
 
-## 6. Security and Known Trade-offs
+## 6. Database Role Separation
 
-- **Session Authentication**: Server-side sessions stored in PostgreSQL via `connect-pg-simple`, utilizing httpOnly, sameSite=lax cookies with 7-day expiration.
-- **CSRF Defense**: `originCheck` middleware verifies request `Origin` / `Referer` against the `Host` header on all state-changing API requests.
-- **Password Hashing**: Cost 12 bcryptjs. Enforces minimum 10 characters and maximum 72 bytes (the bcrypt truncation boundary). Login timing side-channel mitigation performs a dummy bcrypt compare when an email is not found.
-- **Accepted Trade-off**: Registration reveals whether an email already exists (returns 409 `EMAIL_TAKEN`), allowing an attacker to determine if an email is registered. This is an accepted trade-off to provide immediate feedback to the tenant during registration.
-- **Media Privacy & Authenticated Serving**: All EXIF and GPS geolocation metadata are stripped during Sharp image re-encoding. Media files are stored using server-generated keys and never served directly as public static assets; access is strictly mediated through authenticated routes (`GET /api/media/:id`), ensuring complete tenant tenancy isolation and IDOR prevention.
-- **Known Trade-off (Landlord Link Access)**: Anyone with the link can act as the landlord. This avoids requiring landlord account registration or app installation. Mitigated by: (1) cryptographically secure 256-bit random tokens (43 base64url characters); (2) storing only the SHA-256 hash in the database; (3) automatic expiration (`INVITE_TTL_DAYS`); (4) instant revocation by the tenant via UI or API; (5) single active link invariant enforced by a partial unique index; (6) rate limiting (60 req/min per IP); (7) strict `no-store` cache control and `no-referrer` policies; and (8) complete omission of tenant email and user IDs from landlord payloads.
-- **Known Limits (Trigger Security)**: The table owner (the app role in development) can disable triggers, so the append-only and lock triggers stop mistakes, application bugs, and race conditions, not a privileged database attacker with direct DDL access; Phase 10 will separate migration (DDL) and app runtime (DML) roles.
-- **Legal Status of Accept**: Acceptance of a deduction within Handover records mutual agreement between the parties within the application workflow. It does not constitute a certified digital signature (such as eSign) or legal court judgment; it serves as contemporary documentary evidence of agreement.
+Handover strictly separates schema migration privileges from application runtime execution:
+
+| Role Category                | Environment Variable                                                            | Role Attributes & Privileges                                                                                                                                                                                                                                                                                                                              |
+| ---------------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Migration / Owner Role**   | `MIGRATE_DATABASE_URL`, `TEST_MIGRATE_DATABASE_URL`                             | Database owner / superuser. Owns tables, applies migrations (001–008), executes `applyAppRoleGrants(ownerPool, ...)` to configure runtime permissions.                                                                                                                                                                                                    |
+| **Application Runtime Role** | `DATABASE_URL`, `TEST_DATABASE_URL` (user `APP_DB_USER`, default `monarch_app`) | `LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS`. Limited runtime DML permissions: `CONNECT` on database; `USAGE` on public schema (`CREATE` revoked); `SELECT, INSERT, UPDATE, DELETE` on application tables; `REVOKE UPDATE, DELETE, TRUNCATE` on `events`; `REVOKE ALL` on `schema_migrations`; `USAGE, SELECT` on all sequences. |
+
+### Invariants Enforced by Role Hardening:
+
+- The running app cannot alter table schemas, drop tables, or create new tables.
+- The running app cannot disable or alter database triggers (`ALTER TABLE ... DISABLE TRIGGER` fails with SQLSTATE 42501).
+- The running app cannot delete or modify rows in the append-only `events` audit table (`UPDATE`, `DELETE`, and `TRUNCATE` fail with SQLSTATE 42501).
+- The running app cannot inspect or alter migration state in `schema_migrations`.
+- The database triggers (`inspections_guard`, `require_draft_inspection`, `require_draft_media`, `deduction_lines_guard`, `deduction_cap_guard`, `events_append_only_row`, `events_no_truncate`) continue to execute automatically for all users, including the owner.
+
+## 7. Security Headers and HTTP Policies
+
+Every HTTP response emitted by the application is protected by Helmet and custom security middleware:
+
+- **Content-Security-Policy (CSP)**:
+  `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; base-uri 'self'`
+  _(Contains neither `'unsafe-inline'` nor `'unsafe-eval'`.)_
+- **Referrer-Policy**: `no-referrer` on all HTML, landlord, and API endpoints.
+- **X-Content-Type-Options**: `nosniff` preventing MIME confusion attacks.
+- **X-Frame-Options / Frame Ancestors**: `DENY` / `frame-ancestors 'none'` preventing clickjacking.
+- **Cache-Control**:
+  - Landlord review routes (`/l/*`, `/api/landlord/*`): `no-store, no-cache, must-revalidate, proxy-revalidate`.
+  - Media photo responses: `private, max-age=86400, no-transform`.
+- **Cookies**: `HttpOnly`, `SameSite=Lax`, and `Secure` (when `COOKIE_SECURE=true`).
+- **CSRF Defense**: `originCheck` middleware validates `Origin` or `Referer` against the `Host` header on all non-GET cookie requests.
+- **Log Hygiene**: Sensitive tokens in landlord review routes (`/l/:token`, `/api/landlord/:token/*`) are automatically redacted with `[REDACTED_TOKEN]` before logging.
+
+## 8. Known Limits and Trade-offs
+
+1. **Not Legal Advice**: Handover records contemporaneous entries and mutual agreements between parties. It does not replace statutory tenancy tribunals, legal counsel, or certified digital signatures (such as eSign).
+2. **Landlord Link Bearer Authentication**: Anyone holding a valid landlord review link can act as the landlord. Mitigated by: 256-bit cryptographically secure token generation (`crypto.randomBytes(32).toString('base64url')`), storing only the SHA-256 digest in the database, automatic expiration (`INVITE_TTL_DAYS`), instant tenant-initiated revocation, and single active link invariant enforced by a partial unique index.
+3. **Landlord Identity Unverified**: The landlord's identity is recorded as an entered text name; no government ID verification or KYC is performed.
+4. **Owner / Superuser Trigger Modification**: While the application runtime role (`monarch_app`) cannot modify audit events or disable triggers, a database superuser or migration owner still retains full DDL rights. Hosted cloud databases must replicate this role split.
+5. **PDF Latin-1 Encoding**: The PDF report generator uses standard built-in PDFKit fonts adhering to Latin-1 / WinAnsiEncoding. Non-Latin scripts (e.g., Devanagari, Kannada, Tamil) and emojis are sanitized to `?` to avoid font rendering exceptions.
+6. **Email Enumeration Trade-off**: Registration (`POST /api/auth/register`) returns HTTP 409 `EMAIL_TAKEN`, enabling an attacker to test if an email is registered. This was an intentional UX trade-off to provide instant feedback without requiring complex asynchronous flows.
+7. **No Email Verification or Password Reset**: Handover does not include an outbound email pipeline. Accounts and passwords must be managed locally; lost passwords cannot be reset self-service.
+8. **Local Disk Storage**: Photos are stored on the local server filesystem (`UPLOAD_DIR`). High-availability multi-instance deployments require a network-mounted volume or cloud object storage adapter (e.g. S3).
+9. **No Raw HEIC Support**: Only JPEG, PNG, and WebP images are accepted and re-encoded by Sharp. Raw HEIC files from iOS devices must be converted before upload or are rejected with HTTP 415 `UNSUPPORTED_MEDIA`.
+10. **Single Landlord Reviewer**: Each tenancy supports at most one active landlord review link at any given time.
+11. **No Account Deletion**: To maintain complete historical audit trail integrity and prevent dangling foreign keys on tenancies and append-only event logs, user account deletion is intentionally not supported.

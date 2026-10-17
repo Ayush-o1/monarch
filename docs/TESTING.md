@@ -299,3 +299,74 @@ Open the generated PDF document (e.g. `/tmp/handover-manual-test.pdf`) in a stan
   - Missing photo file on disk renders `"Photo unavailable"`.
   - Tenancies exceeding 40 photos display `"N more photos not shown"`.
 - [ ] **Privacy Inspection**: Confirm zero instances of tenant email, user UUIDs, raw invite tokens, or internal storage keys anywhere in the visible PDF or text layers.
+
+## 4. Final Release Manual Checklist (Phase 10)
+
+This four-part manual checklist verifies core product requirements across browser configurations, viewport sizes, accessibility modes, and binary exports.
+
+### 4.1 Two-Window Cross-Role Walkthrough
+
+- [ ] **Window A (Tenant - Standard Window)**:
+  - Log in with `demo@handover.local`.
+  - Navigate to `/tenancies.html` and open Tenancy B (**DEMO - Lake View, Flat 12**).
+  - Submit the move-in inspection.
+  - Click "Create Review Link" and copy the generated link (`http://localhost:3000/l/<token>`).
+- [ ] **Window B (Landlord - Private / Incognito Window)**:
+  - Open the copied review link without a login session.
+  - Verify landlord review page renders cleanly: displays property address, deposit, and 5 move-in items.
+  - Verify tenant email and user ID are strictly absent from the DOM and network payloads.
+  - Enter name "Demo Landlord" and click "Acknowledge Record".
+  - Observe immediate status update to `ACKNOWLEDGED`.
+- [ ] **Window A (Tenant)**:
+  - Refresh `/inspection.html?id=<moveInId>`: confirm the editor is locked (inputs disabled, save/submit buttons removed, banner indicates acknowledged state).
+  - Click "Revoke Link" under Share with Landlord: status changes to "No active link".
+- [ ] **Window B (Landlord)**:
+  - Refresh `/l/<token>`: confirm the page immediately returns HTTP 410 with the message "This review link was revoked or replaced."
+
+### 4.2 Phone-Sized Responsive Check (375px Viewport)
+
+- [ ] Open Developer Tools, set device emulation to **iPhone SE (375px width)**.
+- [ ] Audit every page:
+  - `/` (Home / Redirect)
+  - `/login.html` & `/register.html`
+  - `/tenancies.html`
+  - `/tenancy.html?id=<id>`
+  - `/inspection.html?id=<id>`
+  - `/compare.html?id=<id>`
+  - `/settlement.html?id=<id>`
+  - `/l/<token>` (Landlord review page)
+  - `/404.html`
+- [ ] **No Horizontal Scroll**: Verify `document.documentElement.scrollWidth <= window.innerWidth` (no horizontal scrollbar on any page).
+- [ ] **Touch Targets**: All interactive buttons, tabs, links, and inputs have minimum 44px tap target height.
+- [ ] **Responsive Tables & Lists**: Comparison outcome lists and deduction lines collapse gracefully onto mobile cards without truncated text or clipping.
+- [ ] **Photo Strips**: Thumbnail strips wrap or scroll smoothly within viewport boundaries.
+
+### 4.3 Keyboard-Only Accessibility Run
+
+- [ ] Unplug or avoid using the mouse/trackpad throughout this entire test run.
+- [ ] **Tab Navigation**:
+  - Press `Tab` through each page from top to bottom.
+  - Every interactive element (links, buttons, form inputs, checkboxes) receives focus in logical DOM order.
+  - Focused elements display a high-contrast focus outline (`:focus-visible` outline: `2px solid var(--link-color)` with `outline-offset: 2px`).
+- [ ] **Buttons & Form Submission**:
+  - Trigger buttons using `Enter` or `Space`.
+  - Checkboxes toggle using `Space`.
+  - Form submission succeeds via `Enter` keypress inside inputs.
+- [ ] **Dialogs & Modals**:
+  - Trigger "Close Tenancy" confirmation modal on `/settlement.html`: focus is trapped inside the modal.
+  - Press `Escape`: modal closes and focus returns to the triggering button.
+- [ ] **Screen Reader Semantics**:
+  - Condition badges and comparison status indicators display both text labels and iconography (not color alone).
+  - Flash messages and error alerts carry `role="alert"` or `aria-live="polite"`.
+  - Contrast ratios for text, muted labels, and primary buttons meet or exceed WCAG AA 4.5:1.
+
+### 4.4 PDF Generation & Privacy Check
+
+- [ ] On `/tenancy.html?id=<tenancyAId>`, click "Download PDF report".
+- [ ] Confirm file downloads with name `handover-demo-palm-residency-flat-3b-<YYYY-MM-DD>.pdf`.
+- [ ] Open in PDF viewer:
+  - Running header and footer present on every page with exact page count (`Page X of Y`).
+  - Legal disclaimer printed on every page footer: `Handover records what the parties entered and acknowledged. It is not legal advice.`
+  - Content flows cleanly across page boundaries without orphan section headings.
+  - High-resolution, aspect-ratio-preserved thumbnail photographs embedded for worse/disputed items.
+  - Inspect plain text layer: confirm tenant password hashes, session IDs, internal upload storage keys, and raw landlord invite tokens never appear anywhere in the document.
