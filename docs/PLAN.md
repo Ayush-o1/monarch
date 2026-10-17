@@ -69,12 +69,13 @@
   - Pure sanitiser `toPdfText` and `formatPdfMoney` using "Rs"
   - Download endpoint `GET /api/tenancies/:id/report.pdf` (tenant session only) and UI download link with notice
 
-- [ ] **Phase 10 — Hardening, accessibility, demo data**
-  - Security review (IDOR coverage, rate limits, CSP headers)
-  - Accessibility pass (touch targets >= 44px, keyboard navigation, contrast, text+icon indicators)
-  - Demo seed script (`scripts/seed-demo.js`)
-  - Finalized demo script and testing guide
+- [x] **Phase 10 — Hardening, role separation, accessibility, demo data**
+  - Database role separation (`monarch_app` limited DML role, `applyAppRoleGrants`, owner migration pool)
+  - Security review (table-driven IDOR coverage across all 21 tenant routes, landlord token isolation, rate limits, strict CSP headers)
+  - Accessibility & error pages pass (404 page, touch targets >= 44px, keyboard navigation, contrast ratios >= 4.5:1, text+icon badges)
+  - Demo seed script (`scripts/seed-demo.js`, `npm run seed:demo`, `tests/integration/seed.test.js`)
+  - Finalized demo script, testing guide, and architectural known limits (`README.md`, `docs/TESTING.md`, `docs/ARCHITECTURE.md`)
 
-- [ ] **Phase 11 — Deployment evaluation**
-  - Evaluation of free-tier hosting candidates (Render + Neon / storage)
-  - Deployment runbook (`docs/DEPLOYMENT.md`)
+- [x] **Phase 11 — Deployment evaluation and runbook**
+  - Evaluation of hosting architectures (Render + persistent disk reference path, Neon + R2/S3, self-hosted Linux VM with Docker)
+  - Complete production deployment runbook (`docs/DEPLOYMENT.md`) covering provisioning, role separation, environment secrets, persistent storage durability, and release checklist
