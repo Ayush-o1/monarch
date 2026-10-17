@@ -14,16 +14,18 @@ Handover requires three components in production:
 
 ### Architecture Options Evaluated
 
-| Dimension                    | Primary Reference Architecture: Render (Web Service + Disk) + Render Postgres | Alternative A: Render Web Service + Neon Postgres + Cloudflare R2 / AWS S3                  | Alternative B: Self-Hosted Linux VM (Docker & Docker Compose)                |
-| ---------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| **Compute**                  | Render Web Service (Starter tier: $7/mo, 512 MB RAM, 0.5 CPU)                 | Render Web Service (Free tier or Starter tier)                                              | VPS (e.g. Hetzner €3.50/mo, DigitalOcean $4–6/mo, or AWS Lightsail $3.50/mo) |
-| **Database**                 | Render Managed PostgreSQL (Basic tier: $6/mo, includes 1 GB storage)          | Neon Serverless PostgreSQL (Free tier: 0.5 GB, or Launch plan: $5/mo base)                  | Self-managed PostgreSQL 16 container in Docker Compose                       |
-| **Media Storage**            | Render Persistent Disk ($0.25/GB/mo mounted to `/var/data/uploads`)           | Cloudflare R2 (10 GB free, $0 egress) or AWS S3 ($0.023/GB/mo)                              | Host directory mounted into container (`/opt/handover/uploads`)              |
-| **Code Changes Needed**      | **None** (uses existing `LocalStorage` and `UPLOAD_DIR`)                      | **Requires code changes** (new S3/R2 storage adapter implementing `save`, `read`, `remove`) | **None** (uses existing `LocalStorage` and `UPLOAD_DIR`)                     |
-| **Database Role Separation** | **Supported** via `src/db/roles.js` and custom role provisioning              | **Supported** via standard Postgres RBAC or Neon console role management                    | **Full control** as native Postgres superuser                                |
-| **Durability on Redeploy**   | High (persistent disk unmounts and remounts across deploys)                   | High (object storage persists independently of compute)                                     | High (host filesystem persists across container restarts)                    |
-| **Operational Complexity**   | Low (managed platform with auto-HTTPS and zero server maintenance)            | Medium (multiple third-party services and APIs to coordinate)                               | High (operator manages OS patches, firewall, backups, and SSL renewal)       |
-| **Estimated Base Cost**      | **~$13.25 – $15.50 / month** ($7 compute + $6 DB + $0.25–$2.50 disk)          | Free tier eligible (or ~$12/mo on paid compute/DB)                                          | **~$4.00 – $6.00 / month**                                                   |
+| Dimension                    | Primary Reference Architecture: Render (Web Service + Disk) + Render Postgres        | Alternative A: Render Web Service + Neon Postgres + Cloudflare R2 / AWS S3                  | Alternative B: Self-Hosted Linux VM (Docker & Docker Compose)                |
+| ---------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| **Compute**                  | Render Web Service (Starter tier: $7/mo, 512 MB RAM, 0.5 CPU)                        | Render Web Service (Free tier or Starter tier)                                              | VPS (e.g. Hetzner €3.50/mo, DigitalOcean $4–6/mo, or AWS Lightsail $3.50/mo) |
+| **Database**                 | Render Managed PostgreSQL (Basic tier: $6/mo, includes 1 GB storage)                 | Neon Serverless PostgreSQL (Free tier: 0.5 GB, or Launch plan: $5/mo base)                  | Self-managed PostgreSQL 16 container in Docker Compose                       |
+| **Media Storage**            | Render Persistent Disk ($0.25/GB/mo mounted to `/var/data/uploads`)                  | Cloudflare R2 (10 GB free, $0 egress) or AWS S3 ($0.023/GB/mo)                              | Host directory mounted into container (`/opt/handover/uploads`)              |
+| **Code Changes Needed**      | **None** (uses existing `LocalStorage` and `UPLOAD_DIR`)                             | **Requires code changes** (new S3/R2 storage adapter implementing `save`, `read`, `remove`) | **None** (uses existing `LocalStorage` and `UPLOAD_DIR`)                     |
+| **Database Role Separation** | **Supported** via `src/db/roles.js` and custom role provisioning                     | **Supported** via standard Postgres RBAC or Neon console role management                    | **Full control** as native Postgres superuser                                |
+| **Durability on Redeploy**   | High (persistent disk unmounts and remounts across deploys)                          | High (object storage persists independently of compute)                                     | High (host filesystem persists across container restarts)                    |
+| **Zero-Downtime Deploys**    | Brief restart transition (~10–30s) during redeploy due to single-instance disk mount | Yes (true zero-downtime rolling deploys supported)                                          | Operator-controlled (typically brief container swap)                         |
+| **Horizontal Scaling**       | Single instance only (disks cannot be shared across multiple instances)              | Supported (stateless compute scales horizontally)                                           | Single host (or multi-host with shared NFS/Ceph)                             |
+| **Operational Complexity**   | Low (managed platform with auto-HTTPS and zero server maintenance)                   | Medium (multiple third-party services and APIs to coordinate)                               | High (operator manages OS patches, firewall, backups, and SSL renewal)       |
+| **Estimated Base Cost**      | **~$13.25 – $15.50 / month** ($7 compute + $6 DB + $0.25–$2.50 disk)                 | Free tier eligible (or ~$12/mo on paid compute/DB)                                          | **~$4.00 – $6.00 / month**                                                   |
 
 ### Recommendation
 
@@ -32,6 +34,9 @@ It provides managed backups, automated TLS certificates, zero server maintenance
 
 > [!WARNING]
 > **Ephemeral Disk Risk**: Render Free Web Services do **NOT** support persistent disks and spin down after 15 minutes of inactivity. Deploying Handover to any stateless container without a persistent disk will cause all uploaded inspection photos to be permanently deleted on every redeploy or container restart.
+
+> [!NOTE]
+> **Single-Instance Disk Lifecycle**: Attaching a persistent disk disables Render's rolling zero-downtime deployments. Because a disk can only be mounted to one container instance at a time, Render gracefully stops the running container before attaching the disk to the newly deployed container, resulting in a brief (~10–30s) transition. If multi-instance horizontal scaling or zero-downtime deploys are mandatory, adopt Alternative A with object storage (R2/S3).
 
 ---
 
@@ -77,12 +82,15 @@ Before deploying, ensure you have:
    - **Region**: Same region as your database
    - **Branch**: `main`
    - **Runtime**: `Node`
-   - **Build Command**: `npm install && npm run migrate`
-   - **Start Command**: `npm start`
-   - **Plan**: `Starter ($7/mo)` (required to attach persistent disk)
-4. Under **Advanced** > **Disks**, add the disk from Step 3.2:
-   - **Mount Path**: `/var/data/uploads`
-   - **Size**: `1 GB`
+   - **Build Command**: `npm install && touch .env` (installs dependencies; `touch .env` ensures a zero-byte file exists so Node's `--env-file=.env` falls back safely to Render's injected dashboard variables)
+   - **Pre-Deploy Command**: `npm run migrate` (runs migrations via `MIGRATE_DATABASE_URL` before traffic shifts; aborts deployment if migrations fail)
+   - **Start Command**: `npm start` (boots application via `DATABASE_URL` as `monarch_app`)
+   - **Plan**: `Starter ($7/mo)` (required for persistent disk and pre-deploy commands)
+4. Under **Advanced**:
+   - **Health Check Path**: `/api/health` (Render verifies HTTP 200 before routing traffic to the instance)
+   - **Disks**: Add the disk from Step 3.2:
+     - **Mount Path**: `/var/data/uploads`
+     - **Size**: `1 GB`
 
 ---
 
@@ -165,18 +173,38 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO monarch_app;
 
 ## 6. Production Migrations & Deployment Ordering
 
-### Execution Ordering
+### Three-Phase Render Deployment Lifecycle
 
-Render builds and deploys in two discrete steps:
+Render paid web services execute deployments in three distinct lifecycle phases:
 
-1. **Build Step**: Executes `npm install && npm run migrate`.
-   - `npm run migrate` runs `src/db/migrate.js` using `MIGRATE_DATABASE_URL`.
-   - Applies migrations in transactions (`001_` through `008_`).
-   - Verifies SHA-256 checksums in `schema_migrations`.
-   - Executes `applyAppRoleGrants` to ensure any newly added tables receive grants.
-   - If migrations fail, the build fails immediately and the previous running version is not replaced.
-2. **Start Step**: Executes `npm start` (`node src/server.js`).
-   - The application starts and connects to PostgreSQL strictly using `DATABASE_URL` (the `monarch_app` role).
+1. **Build Phase**: Executes `npm install && touch .env`.
+   - Runs in Render's build cluster.
+   - Installs production and dev dependencies required for build/tooling.
+   - `touch .env` creates an empty `.env` in the project root so that Node's `--env-file=.env` argument does not error out on Render, where environment variables are injected directly via `process.env`.
+   - **Note on Network Isolation**: Database migrations should **not** be chained in the build command (`npm install && npm run migrate`) because build environments may not have direct access to Render's internal database network or VPC hostnames.
+
+2. **Pre-Deploy Phase**: Executes `npm run migrate`.
+   - Runs in an isolated, ephemeral container with access to Render's internal database network.
+   - Connects using the database owner credentials in `MIGRATE_DATABASE_URL`.
+   - Applies pending migrations (`001_` through `008_`) inside individual transactions.
+   - Validates SHA-256 checksums in `schema_migrations`.
+   - Calls `applyAppRoleGrants` to ensure tables and sequences are granted to `monarch_app`.
+   - **Deployment Abort on Failure**: If any migration fails or times out (Render enforces a 30-minute timeout), the deploy is immediately canceled. The previous release continues running without disruption.
+   - **Disk Isolation**: The pre-deploy container does **not** have access to the persistent disk. Because migrations only communicate with PostgreSQL over the network, this is completely safe. Media-related tasks or demo seeding should not run in pre-deploy.
+
+3. **Start & Health Check Phase**: Executes `npm start` (`node --env-file=.env src/server.js`).
+   - The application boots and connects strictly through `DATABASE_URL` using the restricted `monarch_app` role.
+   - The persistent disk is mounted at `/var/data/uploads` (`UPLOAD_DIR`).
+   - Render polls `GET /api/health` every few seconds.
+   - Traffic is only routed to the new container once `/api/health` returns HTTP 200 (`{"status":"ok"}`).
+
+### Persistent Disk Redeploy Lifecycle & Downtime Trade-off
+
+When deploying services with persistent disks on Render:
+
+- **Single-Mount Constraint**: Render persistent disks can only be attached to a single instance at a time.
+- **Restart Transition**: Unlike stateless services that support zero-downtime rolling deploys, Render must stop the running instance, detach the disk, attach the disk to the new instance, and start the new container. This swap typically takes between 10 to 30 seconds.
+- **Future Horizontal Scaling**: If application growth requires zero-downtime redeploys or horizontal scaling (2+ instances), migrate media storage from the persistent disk to S3-compatible object storage (Alternative A: Cloudflare R2 or AWS S3).
 
 ---
 
@@ -196,6 +224,13 @@ If `UPLOAD_DIR` points to `./uploads` on a container without a persistent disk:
 
 - Every Git push, manual deploy, or container restart re-provisions a fresh container.
 - Existing photos in `./uploads` are discarded, leaving broken photo links in reports and condition records.
+
+### Scaling Consideration: Single-Instance Constraint
+
+Persistent disks on Render are bound to a single container instance. Consequently:
+
+- **No Multi-Instance Scaling**: You cannot scale the web service to 2 or more concurrent instances while a persistent disk is attached.
+- **Migration Path**: If load requires scaling horizontally to multiple instances, implement the S3-compatible storage adapter (Alternative A) so that all instances read and write from centralized object storage.
 
 ---
 
@@ -227,6 +262,7 @@ Every HTTP response is guarded by Helmet with zero configuration overrides neede
   - Status 200: `{"status":"ok"}`
   - Status 503: `{"error":{"code":"DATABASE_UNAVAILABLE","message":"Database is unreachable"}}`
 - **Render Configuration**: Set **Health Check Path** to `/api/health` in the Render service settings. Render will not route traffic to a newly deployed container until `/api/health` returns HTTP 200.
+- **Probe Safety & Rate Limiting**: Render probes `/api/health` every few seconds. Because `/api/health` is exempt from authentication, CSRF origin verification (as a GET request), and application rate limiters, it functions as a lightweight, non-blocking readiness check.
 
 ### Graceful Shutdown
 
@@ -235,7 +271,7 @@ Every HTTP response is guarded by Helmet with zero configuration overrides neede
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
   ```
-- When Render sends `SIGTERM` during rolling updates, the server stops accepting new connections, drains existing HTTP requests, and exits cleanly with code 0.
+- When Render sends `SIGTERM` during updates or restarts, the server stops accepting new connections, drains existing HTTP requests, and exits cleanly with code 0.
 
 ---
 
@@ -251,6 +287,7 @@ DEMO_PASSWORD='<SECURE_DEMO_PASSWORD>' npm run seed:demo
 - Creates demo user `demo@handover.local` with two synthetic tenancies (one in `settling` status with photos and deductions, one in `active` draft status).
 - **Idempotent**: Exits cleanly with `"Demo data already exists"` if run a second time.
 - Never prints passwords, tokens, or landlord links to console logs.
+- **Run in Service Shell, Not Pre-Deploy**: Do **not** place `npm run seed:demo` inside Render's Pre-Deploy Command. Pre-deploy containers do not mount the persistent disk. Execute demo seeding via the Render web shell or SSH after the service and disk are mounted and live.
 
 ---
 
@@ -350,13 +387,15 @@ If a release causes issues:
 
 ### Common Deployment Issues
 
-| Symptom                                               | Cause                                                    | Solution                                                                                       |
-| ----------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `Build failed: MIGRATE_DATABASE_URL is required`      | Environment variable missing in build step               | Add `MIGRATE_DATABASE_URL` in service environment settings.                                    |
-| `Permission denied for table events` during migration | Migration runner connecting as app role instead of owner | Verify `MIGRATE_DATABASE_URL` uses the database owner user.                                    |
-| Session cookie missing `Secure` attribute             | `COOKIE_SECURE=true` not set or `trust proxy` disabled   | Ensure `COOKIE_SECURE=true` is present in Render environment variables.                        |
-| Photos 404 after service redeploy                     | `UPLOAD_DIR` pointing to ephemeral `./uploads`           | Configure persistent disk mount at `/var/data/uploads` and set `UPLOAD_DIR=/var/data/uploads`. |
-| 403 `BAD_ORIGIN` on non-GET requests                  | Request `Origin` does not match `PUBLIC_BASE_URL`        | Ensure `PUBLIC_BASE_URL` exactly matches the browser URL scheme and domain.                    |
+| Symptom                                               | Cause                                                    | Solution                                                                                           |
+| ----------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `node: .env: not found`                               | Node `--env-file=.env` cannot find `.env` file           | Ensure Build Command is `npm install && touch .env` or add an empty `.env` in Render Secret Files. |
+| `Pre-deploy failed: MIGRATE_DATABASE_URL is required` | Environment variable missing in service settings         | Add `MIGRATE_DATABASE_URL` in service environment settings.                                        |
+| `Permission denied for table events` during migration | Migration runner connecting as app role instead of owner | Verify `MIGRATE_DATABASE_URL` uses the database owner user.                                        |
+| Pre-deploy command timed out (30m limit)              | Migration hung waiting on active lock or blocked query   | Check `pg_stat_activity` in Postgres console for lock contention.                                  |
+| Session cookie missing `Secure` attribute             | `COOKIE_SECURE=true` not set or `trust proxy` disabled   | Ensure `COOKIE_SECURE=true` is present in Render environment variables.                            |
+| Photos 404 after service redeploy                     | `UPLOAD_DIR` pointing to ephemeral `./uploads`           | Configure persistent disk mount at `/var/data/uploads` and set `UPLOAD_DIR=/var/data/uploads`.     |
+| 403 `BAD_ORIGIN` on non-GET requests                  | Request `Origin` does not match `PUBLIC_BASE_URL`        | Ensure `PUBLIC_BASE_URL` exactly matches the browser URL scheme and domain.                        |
 
 ---
 
@@ -369,6 +408,11 @@ Before announcing the deployment to users, complete this checklist:
   - `MIGRATE_DATABASE_URL` configured for owner migrations.
   - `DATABASE_URL` configured for application runtime as `monarch_app`.
   - Verified `monarch_app` cannot modify `events` or disable triggers.
+- [ ] **Render Service Lifecycle Commands Configured**:
+  - **Build Command**: `npm install && touch .env`
+  - **Pre-Deploy Command**: `npm run migrate`
+  - **Start Command**: `npm start`
+  - **Health Check Path**: `/api/health`
 - [ ] **Secrets Configured**:
   - `SESSION_SECRET` generated with >= 32 characters of random bytes.
   - `APP_DB_PASSWORD` generated with >= 24 characters of random bytes.
