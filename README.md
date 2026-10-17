@@ -81,6 +81,10 @@ Handover enforces database-level privilege separation:
   npm start
   ```
 
+## Deployment
+
+For the complete production deployment runbook covering the Render reference architecture, database role separation, persistent storage mounts, environment variables, and the release checklist, see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
 ## Testing & Quality
 
 - **Run all automated tests**:
