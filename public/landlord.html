@@ -108,6 +108,245 @@
 
           <!-- Inspections List -->
           <div id="inspections-container"></div>
+
+          <!-- Settlement & Deductions Section (shown after move-out submitted) -->
+          <div
+            id="landlord-deductions-section"
+            style="display: none; margin-top: 2rem"
+          >
+            <!-- Settlement Totals Card -->
+            <section
+              id="landlord-totals-card"
+              class="card"
+              style="
+                margin-bottom: 2rem;
+                padding: 1.5rem;
+                border: 1px solid var(--border-color);
+                border-radius: 6px;
+                background: #f9fafb;
+              "
+            >
+              <h3 style="margin-bottom: 1rem">Deposit Settlement Summary</h3>
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+                  gap: 1rem;
+                  margin-bottom: 0.5rem;
+                "
+              >
+                <div>
+                  <p
+                    style="
+                      font-size: 0.85rem;
+                      color: var(--text-muted);
+                      margin-bottom: 0.25rem;
+                    "
+                  >
+                    Total Deposit
+                  </p>
+                  <p
+                    id="landlord-total-deposit"
+                    style="font-size: 1.25rem; font-weight: 600; margin: 0"
+                  ></p>
+                </div>
+                <div>
+                  <p
+                    style="
+                      font-size: 0.85rem;
+                      color: var(--text-muted);
+                      margin-bottom: 0.25rem;
+                    "
+                  >
+                    Accepted
+                  </p>
+                  <p
+                    id="landlord-accepted-val"
+                    style="
+                      font-size: 1.25rem;
+                      font-weight: 600;
+                      color: #166534;
+                      margin: 0;
+                    "
+                  ></p>
+                </div>
+                <div>
+                  <p
+                    style="
+                      font-size: 0.85rem;
+                      color: var(--text-muted);
+                      margin-bottom: 0.25rem;
+                    "
+                  >
+                    Awaiting Response
+                  </p>
+                  <p
+                    id="landlord-awaiting-val"
+                    style="
+                      font-size: 1.25rem;
+                      font-weight: 600;
+                      color: #92400e;
+                      margin: 0;
+                    "
+                  ></p>
+                </div>
+                <div>
+                  <p
+                    style="
+                      font-size: 0.85rem;
+                      color: var(--text-muted);
+                      margin-bottom: 0.25rem;
+                    "
+                  >
+                    Disputed
+                  </p>
+                  <p
+                    id="landlord-disputed-val"
+                    style="
+                      font-size: 1.25rem;
+                      font-weight: 600;
+                      color: #991b1b;
+                      margin: 0;
+                    "
+                  ></p>
+                </div>
+                <div>
+                  <p
+                    style="
+                      font-size: 0.85rem;
+                      color: var(--text-muted);
+                      margin-bottom: 0.25rem;
+                    "
+                  >
+                    Unclaimed Deposit
+                  </p>
+                  <p
+                    id="landlord-unclaimed-val"
+                    style="
+                      font-size: 1.25rem;
+                      font-weight: 600;
+                      color: #2563eb;
+                      margin: 0;
+                    "
+                  ></p>
+                </div>
+              </div>
+            </section>
+
+            <!-- Propose Deduction Form (shown when settling) -->
+            <section
+              id="propose-deduction-card"
+              class="card"
+              style="
+                margin-bottom: 2rem;
+                padding: 1.5rem;
+                border: 1px solid var(--border-color);
+                border-radius: 6px;
+              "
+            >
+              <h3 style="margin-bottom: 0.5rem">Propose a Deduction</h3>
+              <p
+                style="
+                  font-size: 0.9rem;
+                  color: var(--text-muted);
+                  margin-bottom: 1.25rem;
+                "
+              >
+                Propose a deduction against the tenant deposit. You may link it
+                to a move-out inspection item or propose an unlinked line. Note:
+                deduction lines cannot be edited once proposed; to alter an
+                amount, withdraw the line and propose a new one.
+              </p>
+
+              <div
+                id="deduction-form-error"
+                class="alert error"
+                style="display: none; margin-bottom: 1rem"
+              ></div>
+
+              <form id="propose-deduction-form">
+                <div class="form-group">
+                  <label for="deduction-item-select"
+                    >Linked Move-out Item</label
+                  >
+                  <select
+                    id="deduction-item-select"
+                    style="
+                      width: 100%;
+                      padding: 0.625rem;
+                      border: 1px solid var(--border-color);
+                      border-radius: 4px;
+                      font-size: 1rem;
+                    "
+                  >
+                    <option value="">Not linked to an item</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="deduction-desc-input"
+                    >Description (1-300 characters)</label
+                  >
+                  <input
+                    type="text"
+                    id="deduction-desc-input"
+                    maxlength="300"
+                    placeholder="e.g. Broken cabinet hinge replacement"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="deduction-amount-input"
+                    >Amount in Rupees (₹)</label
+                  >
+                  <input
+                    type="text"
+                    id="deduction-amount-input"
+                    placeholder="e.g. 1500.00"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="deduction-landlord-name"
+                    >Your Full Name (Signee)</label
+                  >
+                  <input
+                    type="text"
+                    id="deduction-landlord-name"
+                    maxlength="80"
+                    placeholder="e.g. Landlord Name"
+                    required
+                  />
+                </div>
+
+                <button
+                  id="propose-deduction-btn"
+                  type="submit"
+                  class="btn btn-primary"
+                  style="width: auto"
+                >
+                  Propose Deduction
+                </button>
+              </form>
+            </section>
+
+            <!-- Deduction Lines List -->
+            <section style="margin-bottom: 2rem">
+              <h3 style="margin-bottom: 1rem">Deduction Lines</h3>
+              <div
+                id="landlord-empty-lines"
+                class="card"
+                style="display: none; text-align: center; padding: 1.5rem"
+              >
+                <p style="color: var(--text-muted); margin: 0">
+                  No deductions proposed yet.
+                </p>
+              </div>
+              <div id="landlord-lines-container"></div>
+            </section>
+          </div>
         </div>
       </main>
       <footer

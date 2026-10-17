@@ -316,6 +316,11 @@ footer {
   color: #9a3412;
 }
 
+.badge-not-linked {
+  background-color: #f3f4f6;
+  color: #4b5563;
+}
+
 /* Lightbox Modal */
 .lightbox-modal {
   display: none;

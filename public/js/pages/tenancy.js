@@ -87,6 +87,32 @@ function renderEventItem(ev) {
     if (ev.type === 'invite_revoked') {
       parts.push('Link revoked');
     }
+    if (ev.type === 'deduction_proposed' && ev.payload.amountPaise) {
+      parts.push(`Proposed deduction: ${formatPaise(ev.payload.amountPaise)}`);
+    }
+    if (ev.type === 'deduction_accepted') {
+      parts.push(
+        ev.payload.note
+          ? `Deduction accepted: "${ev.payload.note}"`
+          : 'Deduction accepted'
+      );
+    }
+    if (ev.type === 'deduction_disputed') {
+      parts.push(`Deduction disputed: "${ev.payload.note}"`);
+    }
+    if (ev.type === 'deduction_withdrawn') {
+      parts.push('Deduction withdrawn');
+    }
+    if (ev.type === 'tenancy_closed') {
+      const closeParts = [
+        `Accepted: ${formatPaise(ev.payload.acceptedPaise || 0)}`,
+        `Unclaimed: ${formatPaise(ev.payload.unclaimedPaise || 0)}`,
+      ];
+      if (ev.payload.unresolvedAcknowledged) {
+        closeParts.push('unresolved acknowledged');
+      }
+      parts.push(`Tenancy closed (${closeParts.join(', ')})`);
+    }
     details.textContent = parts.join(' • ');
     item.appendChild(details);
   }
@@ -396,6 +422,18 @@ async function loadTenancy() {
         tenancyId,
         loadTenancy
       );
+    }
+
+    // Settlement section link
+    const settlementSection = document.getElementById('settlement-section');
+    const settlementLink = document.getElementById('settlement-link');
+    if (settlementSection && settlementLink) {
+      if (tenancy.status === 'settling' || tenancy.status === 'closed') {
+        settlementSection.style.display = 'block';
+        settlementLink.href = `/settlement.html?id=${encodeURIComponent(tenancyId)}`;
+      } else {
+        settlementSection.style.display = 'none';
+      }
     }
 
     // Share with landlord section

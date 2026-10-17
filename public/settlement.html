@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deposit Settlement — Handover</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+          "
+        >
+          <h1>Handover</h1>
+          <p><a id="back-link" href="/tenancies.html">← Tenancy Details</a></p>
+        </div>
+      </header>
+
+      <main>
+        <div
+          id="general-error"
+          class="alert error"
+          role="alert"
+          style="display: none"
+        ></div>
+        <p id="loading-state">Loading settlement record...</p>
+
+        <div id="settlement-content" style="display: none">
+          <!-- Tenancy Header -->
+          <section style="margin-bottom: 2rem">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                margin-bottom: 0.5rem;
+              "
+            >
+              <h2 id="property-label" style="margin-bottom: 0"></h2>
+              <span
+                id="tenancy-status"
+                class="badge"
+                style="
+                  padding: 0.25rem 0.65rem;
+                  border-radius: 4px;
+                  font-size: 0.85rem;
+                  font-weight: 600;
+                  background: #e5e7eb;
+                  color: #374151;
+                "
+              ></span>
+            </div>
+            <p
+              id="property-address"
+              style="color: var(--text-muted); margin-bottom: 0.5rem"
+            ></p>
+          </section>
+
+          <!-- Totals Panel -->
+          <section
+            id="totals-card"
+            class="card"
+            style="
+              margin-bottom: 2rem;
+              padding: 1.5rem;
+              border: 1px solid var(--border-color);
+              border-radius: 6px;
+              background: #f9fafb;
+            "
+          >
+            <h3 style="margin-bottom: 1rem">Settlement Summary</h3>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                gap: 1rem;
+                margin-bottom: 1.25rem;
+              "
+            >
+              <div>
+                <p
+                  style="
+                    font-size: 0.85rem;
+                    color: var(--text-muted);
+                    margin-bottom: 0.25rem;
+                  "
+                >
+                  Total Deposit
+                </p>
+                <p
+                  id="total-deposit-val"
+                  style="font-size: 1.25rem; font-weight: 600; margin: 0"
+                ></p>
+              </div>
+              <div>
+                <p
+                  style="
+                    font-size: 0.85rem;
+                    color: var(--text-muted);
+                    margin-bottom: 0.25rem;
+                  "
+                >
+                  Accepted
+                </p>
+                <p
+                  id="accepted-val"
+                  style="
+                    font-size: 1.25rem;
+                    font-weight: 600;
+                    color: #166534;
+                    margin: 0;
+                  "
+                ></p>
+              </div>
+              <div>
+                <p
+                  style="
+                    font-size: 0.85rem;
+                    color: var(--text-muted);
+                    margin-bottom: 0.25rem;
+                  "
+                >
+                  Awaiting Response
+                </p>
+                <p
+                  id="awaiting-val"
+                  style="
+                    font-size: 1.25rem;
+                    font-weight: 600;
+                    color: #92400e;
+                    margin: 0;
+                  "
+                ></p>
+              </div>
+              <div>
+                <p
+                  style="
+                    font-size: 0.85rem;
+                    color: var(--text-muted);
+                    margin-bottom: 0.25rem;
+                  "
+                >
+                  Disputed
+                </p>
+                <p
+                  id="disputed-val"
+                  style="
+                    font-size: 1.25rem;
+                    font-weight: 600;
+                    color: #991b1b;
+                    margin: 0;
+                  "
+                ></p>
+              </div>
+              <div>
+                <p
+                  style="
+                    font-size: 0.85rem;
+                    color: var(--text-muted);
+                    margin-bottom: 0.25rem;
+                  "
+                >
+                  Unclaimed Deposit
+                </p>
+                <p
+                  id="unclaimed-val"
+                  style="
+                    font-size: 1.25rem;
+                    font-weight: 600;
+                    color: #2563eb;
+                    margin: 0;
+                  "
+                ></p>
+              </div>
+            </div>
+
+            <!-- Timeline information (plain info only, neutral) -->
+            <div
+              id="timeline-info"
+              style="
+                border-top: 1px solid var(--border-color);
+                padding-top: 0.75rem;
+                font-size: 0.875rem;
+                color: var(--text-muted);
+              "
+            >
+              <p id="timeline-text" style="margin: 0"></p>
+            </div>
+          </section>
+
+          <!-- Close Tenancy Section (shown when settling) -->
+          <section
+            id="close-section"
+            class="card"
+            style="
+              display: none;
+              margin-bottom: 2rem;
+              padding: 1.25rem;
+              border: 1px solid var(--border-color);
+              border-radius: 6px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              flex-wrap: wrap;
+              gap: 1rem;
+            "
+          >
+            <div>
+              <h4 style="margin: 0 0 0.25rem 0">Finalize and Close Tenancy</h4>
+              <p style="margin: 0; font-size: 0.9rem; color: var(--text-muted)">
+                Close the tenancy to finalize the deposit record. Once closed,
+                no further deduction proposals or responses can be submitted.
+              </p>
+            </div>
+            <button
+              id="open-close-modal-btn"
+              type="button"
+              class="btn"
+              style="width: auto"
+            >
+              Close Tenancy
+            </button>
+          </section>
+
+          <!-- Deductions List -->
+          <section style="margin-bottom: 2rem">
+            <h3 style="margin-bottom: 1rem">Deduction Lines</h3>
+            <div
+              id="empty-lines"
+              class="card"
+              style="display: none; text-align: center; padding: 2rem"
+            >
+              <p style="color: var(--text-muted); margin: 0">
+                No deductions proposed yet.
+              </p>
+            </div>
+            <div id="lines-container"></div>
+          </section>
+        </div>
+
+        <!-- Close Tenancy Modal -->
+        <div
+          id="close-modal"
+          style="
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+          "
+        >
+          <div
+            class="card"
+            style="
+              max-width: 500px;
+              width: 100%;
+              background: #ffffff;
+              padding: 1.5rem;
+              border-radius: 6px;
+              box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            "
+          >
+            <h3 style="margin-bottom: 0.75rem">Confirm Tenancy Closure</h3>
+            <p
+              id="close-modal-desc"
+              style="font-size: 0.95rem; line-height: 1.5; margin-bottom: 1rem"
+            ></p>
+
+            <div
+              id="unresolved-ack-group"
+              style="display: none; margin-bottom: 1.25rem"
+            >
+              <label
+                style="
+                  display: flex;
+                  align-items: flex-start;
+                  gap: 0.5rem;
+                  cursor: pointer;
+                  font-size: 0.9rem;
+                "
+              >
+                <input
+                  type="checkbox"
+                  id="unresolved-checkbox"
+                  style="margin-top: 0.2rem"
+                />
+                <span id="unresolved-checkbox-label"></span>
+              </label>
+            </div>
+
+            <div
+              id="close-modal-error"
+              class="alert error"
+              style="display: none; margin-bottom: 1rem"
+            ></div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem">
+              <button
+                id="cancel-close-btn"
+                type="button"
+                class="btn btn-secondary"
+                style="width: auto"
+              >
+                Cancel
+              </button>
+              <button
+                id="confirm-close-btn"
+                type="button"
+                class="btn"
+                style="width: auto"
+              >
+                Confirm Close
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lightbox Modal for Photo viewing -->
+        <div id="lightbox-modal" class="lightbox-modal">
+          <img
+            id="lightbox-img"
+            class="lightbox-content"
+            src=""
+            alt="Deduction photo full size"
+          />
+        </div>
+      </main>
+
+      <footer
+        style="
+          margin-top: 3rem;
+          text-align: center;
+          color: var(--text-muted);
+          font-size: 0.85rem;
+        "
+      >
+        <p>
+          Handover records what the parties entered and agreed. It is not legal
+          advice.
+        </p>
+      </footer>
+    </div>
+
+    <script type="module" src="/js/pages/settlement.js"></script>
+  </body>
+</html>

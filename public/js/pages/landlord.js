@@ -1,4 +1,4 @@
-import { formatPaise } from '../money.js';
+import { formatPaise, parseRupeesToPaise } from '../money.js';
 
 // Extract token from path: /l/:token
 const pathSegments = window.location.pathname.split('/').filter(Boolean);
@@ -466,12 +466,385 @@ async function loadLandlordView() {
       for (const insp of inspections) {
         inspectionsContainer.appendChild(renderInspection(insp, t.status));
       }
+
+      // Move-out inspection & settlement deductions
+      const moveOutInsp = inspections.find((i) => i.type === 'move_out');
+      const moveOutSubmitted =
+        moveOutInsp &&
+        (moveOutInsp.status === 'submitted' ||
+          moveOutInsp.status === 'acknowledged');
+
+      const deductionsSection = document.getElementById(
+        'landlord-deductions-section'
+      );
+      if (deductionsSection) {
+        if (moveOutSubmitted && data.settlement) {
+          deductionsSection.style.display = 'block';
+
+          // Settlement totals
+          const s = data.settlement;
+          setElText('landlord-total-deposit', formatPaise(s.depositPaise || 0));
+          setElText('landlord-accepted-val', formatPaise(s.acceptedPaise || 0));
+          setElText('landlord-awaiting-val', formatPaise(s.proposedPaise || 0));
+          setElText('landlord-disputed-val', formatPaise(s.disputedPaise || 0));
+          setElText(
+            'landlord-unclaimed-val',
+            formatPaise(s.unclaimedPaise || 0)
+          );
+
+          // Propose Form
+          const proposeCard = document.getElementById('propose-deduction-card');
+          if (proposeCard) {
+            if (t.status === 'settling') {
+              proposeCard.style.display = 'block';
+
+              // Item options
+              const itemSelect = document.getElementById(
+                'deduction-item-select'
+              );
+              if (itemSelect) {
+                itemSelect.textContent = '';
+                const defaultOpt = document.createElement('option');
+                defaultOpt.value = '';
+                defaultOpt.textContent = 'Not linked to an item';
+                itemSelect.appendChild(defaultOpt);
+
+                for (const it of data.moveOutItems || []) {
+                  const opt = document.createElement('option');
+                  opt.value = it.id;
+                  opt.textContent = `${it.room} - ${it.name} (${getChangeLabel(it.linkedChange)})`;
+                  itemSelect.appendChild(opt);
+                }
+              }
+
+              // Name input from sessionStorage
+              const nameInput = document.getElementById(
+                'deduction-landlord-name'
+              );
+              if (nameInput) {
+                nameInput.value =
+                  sessionStorage.getItem('landlord_name') ||
+                  t.landlordName ||
+                  '';
+              }
+            } else {
+              proposeCard.style.display = 'none';
+            }
+          }
+
+          // Lines list
+          const linesContainer = document.getElementById(
+            'landlord-lines-container'
+          );
+          const emptyLines = document.getElementById('landlord-empty-lines');
+          if (linesContainer && emptyLines) {
+            linesContainer.textContent = '';
+            const lines = data.lines || [];
+            if (lines.length === 0) {
+              emptyLines.style.display = 'block';
+            } else {
+              emptyLines.style.display = 'none';
+              for (const l of lines) {
+                linesContainer.appendChild(
+                  renderLandlordDeductionLine(l, t.status, loadLandlordView)
+                );
+              }
+            }
+          }
+        } else {
+          deductionsSection.style.display = 'none';
+        }
+      }
     }
   } catch (err) {
     loadingState.style.display = 'none';
     generalError.style.display = 'block';
     generalError.textContent = err.message || 'An unexpected error occurred.';
   }
+}
+
+function getChangeLabel(linkedChange) {
+  switch (linkedChange) {
+    case 'worse':
+      return 'Condition worse at move-out';
+    case 'new_at_move_out':
+      return 'New item at move-out';
+    case 'same':
+      return 'No change recorded';
+    case 'better':
+      return 'Better at move-out';
+    case 'not_linked':
+    default:
+      return 'Not linked to an item';
+  }
+}
+
+function getStatusBadge(status) {
+  const badge = document.createElement('span');
+  badge.className = 'badge';
+  badge.style.padding = '0.2rem 0.5rem';
+  badge.style.borderRadius = '4px';
+  badge.style.fontSize = '0.8rem';
+  badge.style.fontWeight = '600';
+
+  switch (status) {
+    case 'proposed':
+      badge.style.background = '#fef3c7';
+      badge.style.color = '#92400e';
+      badge.textContent = 'Awaiting response';
+      break;
+    case 'accepted':
+      badge.style.background = '#dcfce7';
+      badge.style.color = '#166534';
+      badge.textContent = 'Accepted';
+      break;
+    case 'disputed':
+      badge.style.background = '#fee2e2';
+      badge.style.color = '#991b1b';
+      badge.textContent = 'Disputed';
+      break;
+    case 'withdrawn':
+      badge.style.background = '#f3f4f6';
+      badge.style.color = '#6b7280';
+      badge.textContent = 'Withdrawn';
+      break;
+    default:
+      badge.style.background = '#e5e7eb';
+      badge.style.color = '#374151';
+      badge.textContent = status;
+      break;
+  }
+  return badge;
+}
+
+function renderLandlordDeductionLine(line, tenancyStatus, reloadFn) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.marginBottom = '1rem';
+  card.style.padding = '1.25rem';
+  card.style.border = '1px solid var(--border-color)';
+  card.style.borderRadius = '6px';
+  card.style.background = line.status === 'withdrawn' ? '#fafafa' : '#ffffff';
+
+  const topRow = document.createElement('div');
+  topRow.style.display = 'flex';
+  topRow.style.justifyContent = 'space-between';
+  topRow.style.alignItems = 'flex-start';
+  topRow.style.flexWrap = 'wrap';
+  topRow.style.gap = '0.75rem';
+  topRow.style.marginBottom = '0.5rem';
+
+  const leftTop = document.createElement('div');
+  const descEl = document.createElement('strong');
+  descEl.style.fontSize = '1.05rem';
+  descEl.textContent = line.description;
+  leftTop.appendChild(descEl);
+
+  const rightTop = document.createElement('div');
+  rightTop.style.display = 'flex';
+  rightTop.style.alignItems = 'center';
+  rightTop.style.gap = '0.75rem';
+
+  const amtEl = document.createElement('span');
+  amtEl.style.fontSize = '1.15rem';
+  amtEl.style.fontWeight = '600';
+  amtEl.textContent = formatPaise(line.amountPaise);
+
+  rightTop.appendChild(amtEl);
+  rightTop.appendChild(getStatusBadge(line.status));
+
+  topRow.appendChild(leftTop);
+  topRow.appendChild(rightTop);
+  card.appendChild(topRow);
+
+  const metaRow = document.createElement('div');
+  metaRow.style.fontSize = '0.875rem';
+  metaRow.style.color = 'var(--text-muted)';
+  metaRow.style.marginBottom = '0.5rem';
+  metaRow.style.display = 'flex';
+  metaRow.style.alignItems = 'center';
+  metaRow.style.flexWrap = 'wrap';
+  metaRow.style.gap = '0.5rem';
+
+  const creatorSpan = document.createElement('span');
+  const createdDate = new Date(line.createdAt).toLocaleDateString();
+  creatorSpan.textContent = `Proposed by ${line.createdByName} on ${createdDate}`;
+  metaRow.appendChild(creatorSpan);
+
+  if (line.itemId && line.itemName) {
+    const itemSpan = document.createElement('span');
+    itemSpan.textContent = `• Linked item: ${line.itemRoom} - ${line.itemName}`;
+    metaRow.appendChild(itemSpan);
+  }
+
+  const changeSpan = document.createElement('span');
+  changeSpan.className = 'badge';
+  changeSpan.style.background = '#f3f4f6';
+  changeSpan.style.color = '#374151';
+  changeSpan.textContent = getChangeLabel(line.linkedChange);
+  metaRow.appendChild(changeSpan);
+  card.appendChild(metaRow);
+
+  if (line.tenantNote) {
+    const noteBox = document.createElement('div');
+    noteBox.style.background = '#f9fafb';
+    noteBox.style.borderLeft = '3px solid var(--border-color)';
+    noteBox.style.padding = '0.5rem 0.75rem';
+    noteBox.style.marginBottom = '0.75rem';
+    noteBox.style.fontSize = '0.9rem';
+
+    const noteText = document.createElement('p');
+    noteText.style.margin = '0';
+    noteText.textContent = `Tenant note: "${line.tenantNote}"`;
+    noteBox.appendChild(noteText);
+    card.appendChild(noteBox);
+  }
+
+  // Withdraw button if allowed: settling and status proposed or disputed
+  const canWithdraw =
+    tenancyStatus === 'settling' &&
+    (line.status === 'proposed' || line.status === 'disputed');
+
+  if (canWithdraw) {
+    const actionBox = document.createElement('div');
+    actionBox.style.borderTop = '1px solid var(--border-color)';
+    actionBox.style.paddingTop = '0.75rem';
+    actionBox.style.marginTop = '0.5rem';
+
+    const withdrawBtn = document.createElement('button');
+    withdrawBtn.type = 'button';
+    withdrawBtn.className = 'btn btn-secondary';
+    withdrawBtn.style.width = 'auto';
+    withdrawBtn.textContent = 'Withdraw Deduction';
+
+    withdrawBtn.addEventListener('click', async () => {
+      const signee = sessionStorage.getItem('landlord_name') || 'Landlord';
+      if (
+        !confirm(
+          `Withdraw deduction of ${formatPaise(line.amountPaise)} for "${line.description}"?`
+        )
+      ) {
+        return;
+      }
+
+      withdrawBtn.disabled = true;
+      try {
+        const res = await fetch(
+          `/api/landlord/${encodeURIComponent(token)}/deductions/${encodeURIComponent(line.id)}/withdraw`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: signee }),
+          }
+        );
+        const resData = await res.json();
+        if (!res.ok) {
+          throw new Error(
+            resData.error?.message || 'Failed to withdraw deduction'
+          );
+        }
+        await reloadFn();
+      } catch (err) {
+        alert(err.message || 'Error withdrawing deduction');
+        withdrawBtn.disabled = false;
+      }
+    });
+
+    actionBox.appendChild(withdrawBtn);
+    card.appendChild(actionBox);
+  }
+
+  return card;
+}
+
+// Propose deduction form event listener
+const proposeForm = document.getElementById('propose-deduction-form');
+if (proposeForm) {
+  proposeForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const descInput = document.getElementById('deduction-desc-input');
+    const amtInput = document.getElementById('deduction-amount-input');
+    const nameInput = document.getElementById('deduction-landlord-name');
+    const itemSelect = document.getElementById('deduction-item-select');
+    const submitBtn = document.getElementById('propose-deduction-btn');
+    const errBox = document.getElementById('deduction-form-error');
+
+    errBox.style.display = 'none';
+    errBox.textContent = '';
+
+    const name = nameInput.value.trim();
+    const description = descInput.value.trim();
+    const rawAmt = amtInput.value.trim();
+    const itemId = itemSelect.value || null;
+
+    if (!name) {
+      errBox.style.display = 'block';
+      errBox.textContent = 'Please enter your name.';
+      nameInput.focus();
+      return;
+    }
+
+    let amountPaise;
+    try {
+      amountPaise = parseRupeesToPaise(rawAmt);
+    } catch (err) {
+      errBox.style.display = 'block';
+      errBox.textContent = err.message || 'Invalid rupee amount.';
+      amtInput.focus();
+      return;
+    }
+
+    submitBtn.disabled = true;
+    descInput.disabled = true;
+    amtInput.disabled = true;
+    nameInput.disabled = true;
+    itemSelect.disabled = true;
+
+    try {
+      const res = await fetch(
+        `/api/landlord/${encodeURIComponent(token)}/deductions`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            itemId,
+            description,
+            amountPaise,
+            name,
+          }),
+        }
+      );
+
+      const resData = await res.json();
+      if (!res.ok) {
+        if (
+          resData.error?.code === 'DEDUCTIONS_EXCEED_DEPOSIT' &&
+          resData.error?.details?.remainingPaise !== undefined
+        ) {
+          throw new Error(
+            `Deductions exceed deposit. Remaining available deposit: ${formatPaise(resData.error.details.remainingPaise)}.`
+          );
+        }
+        throw new Error(
+          resData.error?.message || 'Failed to propose deduction'
+        );
+      }
+
+      sessionStorage.setItem('landlord_name', name);
+      descInput.value = '';
+      amtInput.value = '';
+      await loadLandlordView();
+    } catch (err) {
+      errBox.style.display = 'block';
+      errBox.textContent = err.message || 'Failed to propose deduction.';
+    } finally {
+      submitBtn.disabled = false;
+      descInput.disabled = false;
+      amtInput.disabled = false;
+      nameInput.disabled = false;
+      itemSelect.disabled = false;
+    }
+  });
 }
 
 loadLandlordView();
