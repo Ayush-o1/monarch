@@ -72,7 +72,7 @@ monarch/
 7. **invites**: `id uuid pk default gen_random_uuid()`, `tenancy_id uuid not null references tenancies(id)`, `token_hash char(64) not null unique`, `expires_at timestamptz not null`, `revoked_at timestamptz null`, `last_used_at timestamptz null`, `created_at timestamptz not null default now()`. Partial unique index on `(tenancy_id) WHERE revoked_at IS NULL`. Index on `tenancy_id`.
 8. **deduction_lines**: `id uuid pk default gen_random_uuid()`, `tenancy_id uuid not null references tenancies(id)`, `item_id uuid null references inspection_items(id)`, `description varchar(300) not null check (char_length(btrim(description)) between 1 and 300)`, `amount_paise bigint not null check (amount_paise > 0 and amount_paise <= 1000000000)`, `status varchar(20) not null default 'proposed' check in ('proposed','accepted','disputed','withdrawn')`, `tenant_note varchar(500) null`, `created_by_name varchar(80) not null`, `created_at, updated_at timestamptz not null default now()`, `responded_at timestamptz null`. Indexes on `tenancy_id` and `item_id`. No `ON DELETE CASCADE`.
    - Trigger `deduction_lines_guard`: BEFORE UPDATE on `deduction_lines`. Enforces immutability of `tenancy_id`, `item_id`, `amount_paise`, `description`, `created_by_name`, and `created_at`. Enforces legal status transitions: proposed->accepted, proposed->disputed, proposed->withdrawn, disputed->accepted, disputed->withdrawn. `accepted` and `withdrawn` are terminal. Same-status update allowed only if nothing changed except `updated_at`. Raises error starting with `ILLEGAL:` mapping to 409 `INVALID_STATE`.
-   - Trigger `deduction_cap_guard`: BEFORE INSERT OR UPDATE on `deduction_lines`. Locks tenancy row `FOR UPDATE`, sums non-withdrawn lines (excluding current row on update), and raises an exception starting with `CAP:` mapping to 422 `DEDUCTIONS_EXCEED_DEPOSIT` if non-withdrawn total exceeds tenancy deposit.
+   - Trigger `deduction_cap_guard`: BEFORE INSERT on `deduction_lines` (Migration 008 recreated as BEFORE INSERT only). Amounts are immutable and withdrawn is terminal, so cap enforcement is strictly an insert invariant. This prevents alphabetical trigger order conflicts with `deduction_lines_guard` during illegal status transitions when the deposit is fully claimed.
 9. **events (append-only)**: `id bigint identity`, `tenancy_id -> tenancies` (no cascade), `actor_type CHECK in ('tenant','landlord','system')`, `actor_label`, `type`, `payload jsonb default '{}'`, `created_at`.
    - Triggers: UPDATE, DELETE, and TRUNCATE raise an exception. Index on `(tenancy_id, id)`.
 
@@ -211,6 +211,25 @@ monarch/
     - `better`: "Better at move-out"
     - `not_linked`: when `itemId` is null
   - Includes media IDs for thumbnails of move-in and move-out conditions.
+
+### Handover PDF Report (`GET /api/tenancies/:id/report.pdf`)
+
+- **Tenant-Only Access**: `GET /api/tenancies/:id/report.pdf` requires an active tenant session (`requireUser`). It is strictly unavailable to landlords in the MVP (`GET /api/landlord/:token/report.pdf` yields 404). Accessing another tenant's tenancy or providing a malformed UUID returns 404 (IDOR prevention).
+- **Pre-Streaming Data Loading**: All database queries (tenancy details, tenant name, inspections with items and media metadata, comparison outcomes via `compareInspections`, deduction lines, settlement mathematics via `computeSettlement`, events timeline) and disk photo reading/resizing are executed completely _before_ sending HTTP headers. If an error occurs during data retrieval or image processing, the server responds with a standard JSON error (e.g. 500, 404) without leaving half-open connections. Only after all data and images are successfully in memory are response headers set and `doc.pipe(res)` initiated. If an error occurs mid-stream, the server logs a warning and destroys the response (`res.destroy()`) to prevent sending a corrupt partial 200 response.
+- **Photo Selection, Shrinking & Capping**:
+  - _Selection Rule_: Only items that are linked to a non-withdrawn deduction line (`proposed`, `accepted`, or `disputed`) OR have a comparison outcome of `worse` qualify for photo inclusion.
+  - _Side Limit_: At most one photo per side (one move-in photo, one move-out photo) is included per qualifying item. Photos on items that are not worse and not linked to deductions are excluded.
+  - _Capping_: A maximum of 40 photos total are included in any report to ensure PDF byte size remains compact and streaming performance predictable. If more than 40 photos qualify, the report renders `"N more photos not shown"`.
+  - _Shrinking_: Every qualifying photo is read from local storage and resized using Sharp to fit inside 640x480 at JPEG quality 70 before embedding.
+  - _Missing Files_: If a file is missing or unreadable on disk, the report renders `"Photo unavailable"` instead of failing.
+- **Text Safety & Font Limitation**: PDFKit uses built-in Helvetica fonts without embedding external font binaries. Built-in Helvetica cannot render the Indian Rupee symbol (₹) or non-Latin scripts (e.g. Kannada, Hindi, Telugu, emoji). All user-provided strings pass through `toPdfText(s)`, which replaces non-Latin-1 characters with `?` and normalizes whitespace/newlines. All monetary values are formatted with "Rs " prefix (e.g. "Rs 12,500.50") using Indian digit grouping (`en-IN`).
+- **Privacy Invariants**: Tenant email, database user UUIDs, raw invite tokens, and storage keys are strictly excluded from the PDF.
+- **Headers**:
+  - `Content-Type: application/pdf`
+  - `Content-Disposition: attachment; filename="handover-<slug>-<YYYY-MM-DD>.pdf"` (pure ASCII slug, max 40 chars, falling back to "report")
+  - `Cache-Control: private, no-store`
+  - `X-Content-Type-Options: nosniff`
+- **Layout & Pagination**: A4 with 50pt margins. Header block spacing ensures section headers never sit alone at the bottom of a page. Dynamic two-line footers ("Handover records what the parties entered and acknowledged. It is not legal advice." and "Page X of Y • <generatedTime> UTC") are rendered across all buffered pages at the end with `doc.page.margins.bottom = 0` to prevent PDFKit from generating blank overflow pages.
 
 ## 5. API Contract Summary
 

@@ -63,10 +63,11 @@
   - Tenancy closing with unresolved deductions acknowledgement
   - Dual UI: Tenant settlement page (`settlement.html`) and Landlord deduction management (`landlord.html`)
 
-- [ ] **Phase 9 — PDF report**
+- [x] **Phase 9 — PDF report**
   - Install `pdfkit`
-  - Streamed PDF generator: tenancy details, timeline, comparison table, deductions, settlement, key photos
-  - Download endpoint and UI button
+  - Streamed PDF generator: tenancy details, timeline, comparison, deductions, settlement summary, capped & shrunk photos
+  - Pure sanitiser `toPdfText` and `formatPdfMoney` using "Rs"
+  - Download endpoint `GET /api/tenancies/:id/report.pdf` (tenant session only) and UI download link with notice
 
 - [ ] **Phase 10 — Hardening, accessibility, demo data**
   - Security review (IDOR coverage, rate limits, CSP headers)

@@ -260,3 +260,42 @@ Follow this step-by-step procedure using two browser windows (Window A for Tenan
 - **Window A (Tenant)**:
   1. Navigate back to `/tenancy.html?id=<tenancyId>`.
   2. Review the Timeline: confirm `deduction_proposed`, `deduction_accepted`, `deduction_disputed`, `deduction_withdrawn`, and `tenancy_closed` events are rendered in chronological order with plain, informative wording.
+
+### Phase 9 Checklist (Handover PDF Report)
+
+#### 1. Download Link and Notice in UI
+
+- [ ] Log in as a tenant and navigate to `/tenancy.html?id=<tenancyId>`.
+- [ ] Verify "Download PDF report" link is present in the tenancy details section.
+- [ ] Verify the muted helper note next to the link reads:
+      `The PDF includes up to 40 photos (items linked to deductions or marked worse). Text in non-Latin scripts may appear as question marks.`
+- [ ] Click the link: browser downloads `handover-<slug>-<YYYY-MM-DD>.pdf`.
+
+#### 2. Manual Visual PDF Review Checklist
+
+Open the generated PDF document (e.g. `/tmp/handover-manual-test.pdf`) in a standard PDF viewer (such as Preview, Adobe Acrobat, or Chrome) and verify:
+
+- [ ] **Page Count & Progression**: The total page count is exact (e.g. 2 pages for standard flow).
+- [ ] **No Blank Pages**: The last page and intermediate pages contain actual content without any trailing or accidental blank pages.
+- [ ] **Running Footers on Every Page**:
+  - Top line: `Handover records what the parties entered and acknowledged. It is not legal advice.` (centered, muted text).
+  - Bottom line: `Page X of Y • YYYY-MM-DD HH:mm:ss UTC` (centered, muted text).
+  - Footer does not collide with page body content (50pt margins maintained).
+- [ ] **Document Structure & Flow**:
+  - Title: "Handover record: <Property Label>" in bold, large heading.
+  - Tenancy Details block: Property label, address, tenant name, landlord name, deposit in `Rs X,XX,XXX.XX`, refund window in days, lease start date, status, generated UTC time.
+  - Move-in record: Status, submitted time, acknowledged time, acknowledged by name, items grouped cleanly by room with conditions and notes.
+  - Move-out record: Same layout as move-in record.
+  - Comparison: One line per item matching `Room - Item: <move-in condition> -> <move-out condition> [Outcome]`.
+  - Deductions: Description, amount in `Rs X,XX,XXX.XX`, status, linked item, tenant note, who proposed it, created/responded UTC times.
+  - Settlement summary: Clean breakdown of Deposit, Accepted, Awaiting, Disputed, and Unclaimed amounts.
+  - Timeline: Every tenancy event listed in chronological order with UTC timestamp, actor label/type, and plain-words description matching UI wording.
+  - Photos section: Embedded photos with captions `Room • Item • Move-in/Move-out • YYYY-MM-DD HH:mm:ss UTC`.
+- [ ] **Text Wrapping**: Descriptions, notes, long addresses, and multi-line event details wrap gracefully without horizontal clipping or overflow.
+- [ ] **Headings & Orphans**: Section headings do not sit alone at the bottom of a page without content underneath.
+- [ ] **Photos Quality & Proportions**: Shrunk photos maintain clear aspect ratio, are centered/aligned, and are visually legible without pixelation or bloating.
+- [ ] **Edge Cases**:
+  - Missing inspection or deduction displays `"Not yet recorded"`.
+  - Missing photo file on disk renders `"Photo unavailable"`.
+  - Tenancies exceeding 40 photos display `"N more photos not shown"`.
+- [ ] **Privacy Inspection**: Confirm zero instances of tenant email, user UUIDs, raw invite tokens, or internal storage keys anywhere in the visible PDF or text layers.
