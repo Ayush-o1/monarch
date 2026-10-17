@@ -71,9 +71,9 @@ describe('Deductions, Settlement, and Tenancy Close (Phase 8)', () => {
     const tenancyRes = await agent
       .post('/api/tenancies')
       .send({
-        property_label: `Deductions Prop ${Date.now()}`,
-        deposit_paise: depositPaise,
-        refund_window_days: refundWindowDays,
+        propertyLabel: `Deductions Prop ${Date.now()}`,
+        depositPaise: depositPaise,
+        refundWindowDays: refundWindowDays,
       })
       .expect(201);
 
@@ -654,7 +654,7 @@ describe('Deductions, Settlement, and Tenancy Close (Phase 8)', () => {
     // Create tenancy (status: active)
     const tRes = await agent
       .post('/api/tenancies')
-      .send({ property_label: 'Gate Prop', deposit_paise: 50000 })
+      .send({ propertyLabel: 'Gate Prop', depositPaise: 50000 })
       .expect(201);
     const tId = tRes.body.id;
     const invRes = await agent.post(`/api/tenancies/${tId}/invite`).expect(201);

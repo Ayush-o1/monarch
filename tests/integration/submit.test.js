@@ -53,8 +53,8 @@ describe('Inspection Submit and Change Requests', () => {
     const res = await agent
       .post('/api/tenancies')
       .send({
-        property_label: `Prop ${Date.now()}`,
-        deposit_paise: 5000000,
+        propertyLabel: `Prop ${Date.now()}`,
+        depositPaise: 5000000,
       })
       .expect(201);
     return {

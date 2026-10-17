@@ -70,12 +70,12 @@ describe('Landlord Token API and Locking Invariants', () => {
     const tenancyRes = await agent
       .post('/api/tenancies')
       .send({
-        property_label: `Apartment 101 (${Date.now()})`,
+        propertyLabel: `Apartment 101 (${Date.now()})`,
         address: '100 Baker Street',
-        landlord_name: 'Mr. Baker',
-        deposit_paise: 5000000,
-        refund_window_days: 14,
-        lease_start_date: '2026-10-01',
+        landlordName: 'Mr. Baker',
+        depositPaise: 5000000,
+        refundWindowDays: 14,
+        leaseStartDate: '2026-10-01',
       })
       .expect(201);
 
@@ -179,7 +179,7 @@ describe('Landlord Token API and Locking Invariants', () => {
     const { agent } = await createRegisteredAgent('Draft Invisible Tester');
     const tenancyRes = await agent
       .post('/api/tenancies')
-      .send({ property_label: 'Draft Prop', deposit_paise: 3000000 })
+      .send({ propertyLabel: 'Draft Prop', depositPaise: 3000000 })
       .expect(201);
     const tenancyId = tenancyRes.body.id;
 
@@ -214,7 +214,7 @@ describe('Landlord Token API and Locking Invariants', () => {
     const { agent } = await createRegisteredAgent('Draft Media Tenant');
     const draftTenancy = await agent
       .post('/api/tenancies')
-      .send({ property_label: 'Draft Media Prop', deposit_paise: 2000000 })
+      .send({ propertyLabel: 'Draft Media Prop', depositPaise: 2000000 })
       .expect(201);
     const draftInspId = draftTenancy.body.inspections.moveIn.id;
 

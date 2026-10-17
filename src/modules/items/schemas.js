@@ -62,6 +62,8 @@ export const patchItemSchema = z
   })
   .strict();
 
-export const idParamSchema = z.object({
-  id: z.string().uuid('Invalid ID format'),
-});
+export const idParamSchema = z
+  .object({
+    id: z.string().uuid('Invalid ID format'),
+  })
+  .strict();

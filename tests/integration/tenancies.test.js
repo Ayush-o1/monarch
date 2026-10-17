@@ -36,7 +36,7 @@ describe('Tenancies, Inspections, and Events API', () => {
     await request(app).get('/api/tenancies').expect(401);
     await request(app)
       .post('/api/tenancies')
-      .send({ property_label: 'Flat 1', deposit_paise: 5000000 })
+      .send({ propertyLabel: 'Flat 1', depositPaise: 5000000 })
       .expect(401);
     await request(app).get(`/api/tenancies/${crypto.randomUUID()}`).expect(401);
     await request(app)
@@ -58,8 +58,8 @@ describe('Tenancies, Inspections, and Events API', () => {
         {
           tenantId: user.id,
           actorName: user.name,
-          property_label: uniqueLabel,
-          deposit_paise: 2500000,
+          propertyLabel: uniqueLabel,
+          depositPaise: 2500000,
         },
         { pool, recordEventFn: failingRecordEvent }
       );
@@ -85,12 +85,12 @@ describe('Tenancies, Inspections, and Events API', () => {
     const { agent, user } = await createRegisteredAgent('Alice Tenant');
 
     const payload = {
-      property_label: 'Flat 402, Oak Residency',
+      propertyLabel: 'Flat 402, Oak Residency',
       address: '4th Cross, Indiranagar, Bengaluru',
-      landlord_name: 'Mr. Sharma',
-      deposit_paise: 5000000,
-      refund_window_days: 30,
-      lease_start_date: '2026-11-01',
+      landlordName: 'Mr. Sharma',
+      depositPaise: 5000000,
+      refundWindowDays: 30,
+      leaseStartDate: '2026-11-01',
     };
 
     const createRes = await agent
@@ -148,8 +148,8 @@ describe('Tenancies, Inspections, and Events API', () => {
     const createRes = await userA.agent
       .post('/api/tenancies')
       .send({
-        property_label: 'Secret Penthouse',
-        deposit_paise: 90000000,
+        propertyLabel: 'Secret Penthouse',
+        depositPaise: 90000000,
       })
       .expect(201);
 
@@ -179,93 +179,93 @@ describe('Tenancies, Inspections, and Events API', () => {
     assert.equal(res2.body.error.code, 'NOT_FOUND');
   });
 
-  it('validates property_label: 1..80 chars, rejects empty, whitespace, and > 80 chars', async () => {
+  it('validates propertyLabel: 1..80 chars, rejects empty, whitespace, and > 80 chars', async () => {
     const { agent } = await createRegisteredAgent('Validation Tester');
 
-    // Empty property_label
+    // Empty propertyLabel
     const emptyRes = await agent
       .post('/api/tenancies')
-      .send({ property_label: '', deposit_paise: 5000000 })
+      .send({ propertyLabel: '', depositPaise: 5000000 })
       .expect(400);
     assert.equal(emptyRes.body.error.code, 'VALIDATION_ERROR');
-    assert.ok(emptyRes.body.error.details.property_label);
+    assert.ok(emptyRes.body.error.details.propertyLabel);
 
-    // Whitespace-only property_label
+    // Whitespace-only propertyLabel
     const wsRes = await agent
       .post('/api/tenancies')
-      .send({ property_label: '    ', deposit_paise: 5000000 })
+      .send({ propertyLabel: '    ', depositPaise: 5000000 })
       .expect(400);
     assert.equal(wsRes.body.error.code, 'VALIDATION_ERROR');
-    assert.ok(wsRes.body.error.details.property_label);
+    assert.ok(wsRes.body.error.details.propertyLabel);
 
     // Exceeding 80 chars
     const longRes = await agent
       .post('/api/tenancies')
       .send({
-        property_label: 'A'.repeat(81),
-        deposit_paise: 5000000,
+        propertyLabel: 'A'.repeat(81),
+        depositPaise: 5000000,
       })
       .expect(400);
     assert.equal(longRes.body.error.code, 'VALIDATION_ERROR');
-    assert.ok(longRes.body.error.details.property_label);
+    assert.ok(longRes.body.error.details.propertyLabel);
   });
 
-  it('validates deposit_paise: integer 1..1_000_000_000 (rejects decimals, strings, negatives, 0, > 1B)', async () => {
+  it('validates depositPaise: integer 1..1_000_000_000 (rejects decimals, strings, negatives, 0, > 1B)', async () => {
     const { agent } = await createRegisteredAgent('Deposit Tester');
 
     // Decimal paise (e.g. 500.5)
     const decRes = await agent
       .post('/api/tenancies')
-      .send({ property_label: 'Valid Label', deposit_paise: 500.5 })
+      .send({ propertyLabel: 'Valid Label', depositPaise: 500.5 })
       .expect(400);
     assert.equal(decRes.body.error.code, 'VALIDATION_ERROR');
-    assert.ok(decRes.body.error.details.deposit_paise);
+    assert.ok(decRes.body.error.details.depositPaise);
 
     // String number (e.g. "50000")
     const strRes = await agent
       .post('/api/tenancies')
-      .send({ property_label: 'Valid Label', deposit_paise: '50000' })
+      .send({ propertyLabel: 'Valid Label', depositPaise: '50000' })
       .expect(400);
     assert.equal(strRes.body.error.code, 'VALIDATION_ERROR');
-    assert.ok(strRes.body.error.details.deposit_paise);
+    assert.ok(strRes.body.error.details.depositPaise);
 
     // Zero
     const zeroRes = await agent
       .post('/api/tenancies')
-      .send({ property_label: 'Valid Label', deposit_paise: 0 })
+      .send({ propertyLabel: 'Valid Label', depositPaise: 0 })
       .expect(400);
     assert.equal(zeroRes.body.error.code, 'VALIDATION_ERROR');
-    assert.ok(zeroRes.body.error.details.deposit_paise);
+    assert.ok(zeroRes.body.error.details.depositPaise);
 
     // Negative
     const negRes = await agent
       .post('/api/tenancies')
-      .send({ property_label: 'Valid Label', deposit_paise: -100 })
+      .send({ propertyLabel: 'Valid Label', depositPaise: -100 })
       .expect(400);
     assert.equal(negRes.body.error.code, 'VALIDATION_ERROR');
-    assert.ok(negRes.body.error.details.deposit_paise);
+    assert.ok(negRes.body.error.details.depositPaise);
 
     // Exceeding 1,000,000,000
     const maxRes = await agent
       .post('/api/tenancies')
       .send({
-        property_label: 'Valid Label',
-        deposit_paise: 1000000001,
+        propertyLabel: 'Valid Label',
+        depositPaise: 1000000001,
       })
       .expect(400);
     assert.equal(maxRes.body.error.code, 'VALIDATION_ERROR');
-    assert.ok(maxRes.body.error.details.deposit_paise);
+    assert.ok(maxRes.body.error.details.depositPaise);
   });
 
-  it('validates optional fields: address <= 300, landlord_name <= 80, refund_window_days 1..365, lease_start_date date', async () => {
+  it('validates optional fields: address <= 300, landlordName <= 80, refundWindowDays 1..365, leaseStartDate date', async () => {
     const { agent } = await createRegisteredAgent('Optional Tester');
 
     // Address > 300
     const addrRes = await agent
       .post('/api/tenancies')
       .send({
-        property_label: 'Valid Label',
-        deposit_paise: 500000,
+        propertyLabel: 'Valid Label',
+        depositPaise: 500000,
         address: 'X'.repeat(301),
       })
       .expect(400);
@@ -276,47 +276,84 @@ describe('Tenancies, Inspections, and Events API', () => {
     const landRes = await agent
       .post('/api/tenancies')
       .send({
-        property_label: 'Valid Label',
-        deposit_paise: 500000,
-        landlord_name: 'L'.repeat(81),
+        propertyLabel: 'Valid Label',
+        depositPaise: 500000,
+        landlordName: 'L'.repeat(81),
       })
       .expect(400);
     assert.equal(landRes.body.error.code, 'VALIDATION_ERROR');
-    assert.ok(landRes.body.error.details.landlord_name);
+    assert.ok(landRes.body.error.details.landlordName);
 
     // Refund window < 1 or > 365 or decimal
     const winRes1 = await agent
       .post('/api/tenancies')
       .send({
-        property_label: 'Valid Label',
-        deposit_paise: 500000,
-        refund_window_days: 0,
+        propertyLabel: 'Valid Label',
+        depositPaise: 500000,
+        refundWindowDays: 0,
       })
       .expect(400);
     assert.equal(winRes1.body.error.code, 'VALIDATION_ERROR');
-    assert.ok(winRes1.body.error.details.refund_window_days);
+    assert.ok(winRes1.body.error.details.refundWindowDays);
 
     const winRes2 = await agent
       .post('/api/tenancies')
       .send({
-        property_label: 'Valid Label',
-        deposit_paise: 500000,
-        refund_window_days: 366,
+        propertyLabel: 'Valid Label',
+        depositPaise: 500000,
+        refundWindowDays: 366,
       })
       .expect(400);
     assert.equal(winRes2.body.error.code, 'VALIDATION_ERROR');
-    assert.ok(winRes2.body.error.details.refund_window_days);
+    assert.ok(winRes2.body.error.details.refundWindowDays);
 
     // Lease start date not a valid date
     const dateRes = await agent
       .post('/api/tenancies')
       .send({
-        property_label: 'Valid Label',
-        deposit_paise: 500000,
-        lease_start_date: 'invalid-date',
+        propertyLabel: 'Valid Label',
+        depositPaise: 500000,
+        leaseStartDate: 'invalid-date',
       })
       .expect(400);
     assert.equal(dateRes.body.error.code, 'VALIDATION_ERROR');
-    assert.ok(dateRes.body.error.details.lease_start_date);
+    assert.ok(dateRes.body.error.details.leaseStartDate);
+  });
+
+  it('strict schema: snake_case keys are rejected with 400 VALIDATION_ERROR', async () => {
+    const { agent } = await createRegisteredAgent('Strict Snake Tester');
+
+    const res = await agent
+      .post('/api/tenancies')
+      .send({
+        property_label: 'Snake Flat',
+        deposit_paise: 5000000,
+      })
+      .expect(400);
+
+    assert.equal(res.body.error.code, 'VALIDATION_ERROR');
+    assert.ok(
+      res.body.error.details.body &&
+        res.body.error.details.body.includes('property_label')
+    );
+  });
+
+  it('strict schema: unknown extra key is rejected with 400 VALIDATION_ERROR', async () => {
+    const { agent } = await createRegisteredAgent('Strict Unknown Key Tester');
+
+    const res = await agent
+      .post('/api/tenancies')
+      .send({
+        propertyLabel: 'Valid Flat',
+        depositPaise: 5000000,
+        unknownExtraKey: 'unexpected value',
+      })
+      .expect(400);
+
+    assert.equal(res.body.error.code, 'VALIDATION_ERROR');
+    assert.ok(
+      res.body.error.details.body &&
+        res.body.error.details.body.includes('unknownExtraKey')
+    );
   });
 });

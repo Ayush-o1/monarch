@@ -94,9 +94,9 @@ describe('Handover PDF Report API (Phase 9)', () => {
     const tenancyRes = await agent
       .post('/api/tenancies')
       .send({
-        property_label: 'Sunny Studio 101',
-        deposit_paise: 2500000,
-        refund_window_days: 14,
+        propertyLabel: 'Sunny Studio 101',
+        depositPaise: 2500000,
+        refundWindowDays: 14,
       })
       .expect(201);
 
@@ -128,11 +128,11 @@ describe('Handover PDF Report API (Phase 9)', () => {
     const tenancyRes = await agent
       .post('/api/tenancies')
       .send({
-        property_label: propertyLabel,
-        deposit_paise: 5000000,
-        refund_window_days: 30,
+        propertyLabel: propertyLabel,
+        depositPaise: 5000000,
+        refundWindowDays: 30,
         address: '123 Palm Avenue, Indiranagar',
-        landlord_name: 'Mr. Landlord Sharma',
+        landlordName: 'Mr. Landlord Sharma',
       })
       .expect(201);
 
@@ -321,9 +321,9 @@ describe('Handover PDF Report API (Phase 9)', () => {
     const tenancyRes = await agent
       .post('/api/tenancies')
       .send({
-        property_label: 'Empty Loft 7',
-        deposit_paise: 1000000,
-        refund_window_days: 7,
+        propertyLabel: 'Empty Loft 7',
+        depositPaise: 1000000,
+        refundWindowDays: 7,
       })
       .expect(201);
 
@@ -344,9 +344,9 @@ describe('Handover PDF Report API (Phase 9)', () => {
     const tenancyRes = await agent
       .post('/api/tenancies')
       .send({
-        property_label: 'Garden Flat 2B',
-        deposit_paise: 2000000,
-        refund_window_days: 14,
+        propertyLabel: 'Garden Flat 2B',
+        depositPaise: 2000000,
+        refundWindowDays: 14,
       })
       .expect(201);
 
@@ -415,9 +415,9 @@ describe('Handover PDF Report API (Phase 9)', () => {
     const tenancyRes = await agent
       .post('/api/tenancies')
       .send({
-        property_label: 'Huge Mansion',
-        deposit_paise: 10000000,
-        refund_window_days: 30,
+        propertyLabel: 'Huge Mansion',
+        depositPaise: 10000000,
+        refundWindowDays: 30,
       })
       .expect(201);
 
@@ -513,9 +513,9 @@ describe('Handover PDF Report API (Phase 9)', () => {
     const tenancyRes = await agent
       .post('/api/tenancies')
       .send({
-        property_label: 'Big Complex 100',
-        deposit_paise: 5000000,
-        refund_window_days: 14,
+        propertyLabel: 'Big Complex 100',
+        depositPaise: 5000000,
+        refundWindowDays: 14,
       })
       .expect(201);
 
@@ -556,9 +556,9 @@ describe('Handover PDF Report API (Phase 9)', () => {
     const tenancyRes = await agentA
       .post('/api/tenancies')
       .send({
-        property_label: 'Private Property A',
-        deposit_paise: 1000000,
-        refund_window_days: 14,
+        propertyLabel: 'Private Property A',
+        depositPaise: 1000000,
+        refundWindowDays: 14,
       })
       .expect(201);
     const tenancyId = tenancyRes.body.id;
@@ -592,11 +592,11 @@ describe('Handover PDF Report API (Phase 9)', () => {
     const tenancyRes = await agent
       .post('/api/tenancies')
       .send({
-        property_label: 'ಬೆಂಗಳೂರು ಅಪಾರ್ಟ್ಮೆಂಟ್ 🏠 ₹ 50,000',
-        deposit_paise: 5000000,
-        refund_window_days: 14,
+        propertyLabel: 'ಬೆಂಗಳೂರು ಅಪಾರ್ಟ್ಮೆಂಟ್ 🏠 ₹ 50,000',
+        depositPaise: 5000000,
+        refundWindowDays: 14,
         address: 'ಎಂ ಜಿ ರಸ್ತೆ, ಬೆಂಗಳೂರು 🌴',
-        landlord_name: 'ಶ್ರೀನಿವಾಸ್ ರಾವ್ 🤝',
+        landlordName: 'ಶ್ರೀನಿವಾಸ್ ರಾವ್ 🤝',
       })
       .expect(201);
 
@@ -612,9 +612,9 @@ describe('Handover PDF Report API (Phase 9)', () => {
     const tenancyRes = await agent
       .post('/api/tenancies')
       .send({
-        property_label: 'Header Test Prop',
-        deposit_paise: 1000000,
-        refund_window_days: 14,
+        propertyLabel: 'Header Test Prop',
+        depositPaise: 1000000,
+        refundWindowDays: 14,
       })
       .expect(201);
 
@@ -646,9 +646,9 @@ describe('Handover PDF Report API (Phase 9)', () => {
     const tenancyRes = await defaultAgent
       .post('/api/tenancies')
       .send({
-        property_label: 'Default Compress Test Flat',
-        deposit_paise: 5000000,
-        refund_window_days: 14,
+        propertyLabel: 'Default Compress Test Flat',
+        depositPaise: 5000000,
+        refundWindowDays: 14,
       })
       .expect(201);
 

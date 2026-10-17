@@ -67,9 +67,9 @@ describe('Move-out Lifecycle, Comparison Engine, and Landlord Review (Phase 7)',
     const tenancyRes = await agent
       .post('/api/tenancies')
       .send({
-        property_label: `MoveOut Tenancy ${Date.now()}`,
-        deposit_paise: 4000000,
-        refund_window_days: 14,
+        propertyLabel: `MoveOut Tenancy ${Date.now()}`,
+        depositPaise: 4000000,
+        refundWindowDays: 14,
       })
       .expect(201);
 
